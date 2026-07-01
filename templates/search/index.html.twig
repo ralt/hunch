@@ -79,6 +79,8 @@
         .win { flex:0 0 60vw; display:grid; grid-template-rows:auto 1fr;
                background:var(--card); border:1px solid var(--line); border-radius:16px;
                overflow:hidden; box-shadow:0 8px 30px var(--glow); transition:border-color .2s, box-shadow .2s; }
+        /* display:grid above would otherwise defeat the `hidden` attribute. */
+        .win[hidden] { display:none; }
         #win-conversation { grid-template-rows:auto 1fr auto; }
         .win.focused { border-color:var(--accent); box-shadow:0 10px 36px var(--glow); }
         .win-head { padding:.75rem 1.05rem; border-bottom:1px solid var(--line);
