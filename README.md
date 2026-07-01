@@ -6,11 +6,11 @@ You connect a mailbox, Hunch quietly indexes it, and then you just talk to it. T
 
 **It's not an email client.** It doesn't send mail, it doesn't manage folders, it won't replace Gmail or Thunderbird. The most it does with an email is **show it to you** — read-only. That's the whole product.
 
-![Hunch resolving a vague search for a signed office lease — a conversation pane, live-ranked results, and the opened email side by side](docs/screenshot-lease.png)
-
-*Ask vaguely; Hunch searches, ranks by relevance, asks a question when it's unsure, and opens the email beside the conversation. (A developer example in dark mode below.)*
-
 ![Finding a half-remembered kernel bug in an LKML archive: narrowing from a vague "use-after-free in the net stack" down to the specific r8169 driver report and its merged fix, in dark mode](docs/screenshot-lkml.png)
+
+*Ask vaguely; Hunch searches, ranks matches by relevance, asks a clarifying question when it's unsure, and opens the email beside the conversation. (A second example in light mode below.)*
+
+![Hunch resolving a vague search for a signed office lease — a conversation pane, live-ranked results, and the opened email side by side](docs/screenshot-lease.png)
 
 ## Why you'd want it
 
