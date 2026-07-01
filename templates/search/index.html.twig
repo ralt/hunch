@@ -88,15 +88,16 @@
                     overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
         .win-body { min-height:0; overflow-y:auto; padding:1rem 1.05rem; }
         .win-foot { border-top:1px solid var(--line); padding:.6rem 1.05rem .8rem; }
-        /* Left/right pane navigation arrows. */
-        .wm-nav { position:absolute; top:50%; transform:translateY(-50%); z-index:20; width:44px; height:44px;
-                  border-radius:50%; border:1px solid var(--line); background:var(--card); color:var(--accent);
-                  font-size:1.6rem; line-height:1; cursor:pointer; box-shadow:0 4px 16px var(--glow);
-                  display:flex; align-items:center; justify-content:center; padding:0 0 .15em; transition:border-color .15s, transform .15s; }
-        .wm-nav:hover { border-color:var(--accent); }
+        /* Left/right pane navigation arrows — solid accent so they stand out
+           against a pane of the same card colour. */
+        .wm-nav { position:absolute; top:50%; transform:translateY(-50%); z-index:20; width:46px; height:46px;
+                  border-radius:50%; border:0; background:var(--accent); color:#fff;
+                  font-size:1.7rem; line-height:1; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,.28);
+                  display:flex; align-items:center; justify-content:center; padding:0 0 .12em; transition:transform .15s, filter .15s; }
+        .wm-nav:hover { filter:brightness(1.08); transform:translateY(-50%) scale(1.06); }
         .wm-nav[hidden] { display:none; }
-        #nav-left { left:14px; }
-        #nav-right { right:14px; }
+        #nav-left { left:18px; }
+        #nav-right { right:18px; }
         .win-foot form.search { margin:0; }
         .newsearch { display:inline-block; margin-top:.5rem; font-size:.85rem; }
         .intro { margin:.3rem 0 1.2rem; line-height:1.55; }
