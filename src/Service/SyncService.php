@@ -88,6 +88,12 @@ final class SyncService
             // webklex can't narrow server-side (its whereUid() quotes ranges into
             // invalid sequence sets, and it sends an invalid SEARCH without
             // ->all()), so we page through with a client-side cutoff.
+            //
+            // ->softFail(): skip an individual message that errors during fetch
+            // rather than aborting the whole batch. Notably, webklex insists on a
+            // STORE to reconcile the \Seen flag even in read-only PEEK mode; when
+            // that STORE fails it throws "flag could not be removed" — we'd rather
+            // drop that one message than lose the sync.
             $folderNew = 0;
             $page = 1;
 
@@ -95,7 +101,7 @@ final class SyncService
                 // First/full sync: ascending, persisting the cursor after EVERY
                 // batch so a large initial sync resumes instead of restarting.
                 do {
-                    $messages = $client->getFolder($folder)->query()
+                    $messages = $client->getFolder($folder)->query()->softFail()
                         ->all()->setFetchOrder('asc')->limit($perPage, $page)->get();
                     $count = $messages->count();
 
@@ -132,7 +138,7 @@ final class SyncService
                 $newMax = $last;
                 $reachedSynced = false;
                 do {
-                    $messages = $client->getFolder($folder)->query()
+                    $messages = $client->getFolder($folder)->query()->softFail()
                         ->all()->setFetchOrder('desc')->limit($perPage, $page)->get();
                     $count = $messages->count();
 
