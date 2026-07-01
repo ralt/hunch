@@ -38,6 +38,16 @@ IMAP account ──(background worker)──▶ local Maildir (.eml + .json)
 
 Syncing a real mailbox means fetching every message over IMAP — minutes to hours, not milliseconds. Doing that in the HTTP request path freezes a web worker and times out the browser (and OOMs on large mailboxes). Instead the request enqueues a job and returns immediately; a dedicated Symfony Messenger worker fetches and indexes in the background, paging in small batches and persisting a per-folder cursor so it resumes after a restart instead of starting over.
 
+### How the incremental sync stays durable and cheap
+
+The worker recycles periodically (`--time-limit`), and on Symfony Cloud a cron re-runs `hunch:sync` every 30 minutes — so a sync must be safe to interrupt and must not redo work. `SyncService` (see `src/Service/SyncService.php`) keeps a per-folder cursor (the highest synced UID) and:
+
+- **Persists the cursor after *every* batch**, always advancing it as an ascending high-water mark. An interrupted sync (worker recycle, deploy, crash) resumes from the last committed batch instead of restarting the whole mailbox. (An earlier design only committed the cursor at the end of a run, so a large backlog that kept getting interrupted looped forever — the "stuck indexing" bug.)
+- **Skips the already-synced range cheaply.** webklex can only fetch by page, not by UID range (`whereUid()`/`whereUidIn()` emit an invalid `SEARCH` — *"BAD Could not parse command"*), and re-paging the whole mailbox each run is what made syncs crawl. So the worker first runs a **UID-only `SEARCH`** (numbers, no bodies) to learn how many messages precede the cursor, then starts paging on the page where new mail begins — touching only new messages.
+- **Tolerates per-message failures** via webklex `->softFail()`: a message that errors during fetch is skipped rather than aborting the batch. Notably webklex reconciles the `\Seen` flag with a `STORE` even in read-only PEEK mode, and when that `STORE` fails it throws *"flag could not be removed"* — better to drop one message than lose the sync.
+
+Because documents are keyed by a stable id (`sha1(mailboxId:folder:uid)`), re-indexing a message is idempotent, so the occasional overlap on resume is harmless.
+
 ### Why on-device embeddings
 
 This is personal mail — bank statements, insurance, legal documents. Sending all of it to a hosted embedding API is a privacy cost most people shouldn't pay for search. Meilisearch's HuggingFace embedder downloads a multilingual model and computes vectors locally, so indexing is fully private; only your short query and a handful of snippets ever reach the model provider during a search.
