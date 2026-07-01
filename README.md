@@ -27,8 +27,8 @@ Accounts are invite-only (an admin provisions them — no open sign-up), and eac
 
 ## Try it
 
-Hunch is self-hosted and deploys on [Upsun](https://upsun.com). To run it yourself, see **[DEVELOPMENT.md](DEVELOPMENT.md)** for setup and **[ARCHITECTURE.md](ARCHITECTURE.md)** for how it's built and why.
+Hunch is self-hosted and deploys on [Symfony Cloud](https://symfony.com/cloud/). To run it yourself, see **[DEVELOPMENT.md](DEVELOPMENT.md)** for setup and **[ARCHITECTURE.md](ARCHITECTURE.md)** for how it's built and why.
 
 ## License
 
-MIT.
+GNU General Public License v3.0 — see [LICENSE](LICENSE).

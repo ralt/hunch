@@ -5,16 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hunch — search your email by a hunch</title>
     <meta name="description" content="Find any email by describing it in plain language — a conversation, not a keyword search. Private, self-hosted, read-only. Not an email client.">
-    <link rel="icon" href="../public/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23b5552d%22/><circle cx=%2214%22 cy=%2214%22 r=%226.5%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222.4%22/><line x1=%2218.8%22 y1=%2218.8%22 x2=%2224.5%22 y2=%2224.5%22 stroke=%22%23fff%22 stroke-width=%222.8%22 stroke-linecap=%22round%22/><path d=%22M14 9.6l1.15 2.85L18 13.6l-2.85 1.15L14 17.6l-1.15-2.85L10 13.6l2.85-1.15z%22 fill=%22%23fff%22/></svg>">
+    <script>
+    (function(){var r=document.documentElement,s=localStorage.getItem('theme'),d=window.matchMedia('(prefers-color-scheme:dark)').matches;r.setAttribute('data-theme',(s==='dark'||((!s)&&d))?'dark':'light')})();
+    </script>
     <style>
         :root {
             --bg:#f4f1ea; --surface:#fff; --accent:#b5552d; --accent-light:#cf6a3e;
             --text:#2b2b2b; --text-muted:#8a8275; --border:#ece6d8; --glow:rgba(181,85,45,.08);
         }
-        @media(prefers-color-scheme:dark){:root{
+        @media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
             --bg:#171411; --surface:#211d19; --accent:#e0783f; --accent-light:#f0915a;
             --text:#ece6d8; --text-muted:#a89e8f; --border:#322c25; --glow:rgba(224,120,63,.12);
         }}
+        :root[data-theme="dark"]{
+            --bg:#171411; --surface:#211d19; --accent:#e0783f; --accent-light:#f0915a;
+            --text:#ece6d8; --text-muted:#a89e8f; --border:#322c25; --glow:rgba(224,120,63,.12);
+        }
+        .theme-toggle{position:fixed;top:1rem;right:1rem;z-index:10;background:var(--surface);border:1px solid var(--border);border-radius:20px;width:40px;height:22px;cursor:pointer;padding:2px;display:flex;align-items:center;transition:border-color .2s}
+        .theme-toggle:hover{border-color:var(--accent)}
+        .theme-toggle .knob{width:16px;height:16px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;transition:transform .3s ease}
+        .theme-toggle .knob svg{width:10px;height:10px;color:var(--surface)}
+        .theme-toggle[aria-checked="true"] .knob{transform:translateX(18px)}
+        @media(prefers-reduced-motion:reduce){.theme-toggle .knob{transition:none}}
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
         .container{max-width:960px;margin:0 auto;padding:0 1.5rem}
@@ -52,6 +65,12 @@
     </style>
 </head>
 <body>
+    <button class="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode">
+        <span class="knob">
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </span>
+    </button>
     <div class="hero">
         <svg class="logo" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="var(--accent)"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="#fff" stroke-width="2.4"/><line x1="18.8" y1="18.8" x2="24.5" y2="24.5" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/><path d="M14 9.6l1.15 2.85L18 13.6l-2.85 1.15L14 17.6l-1.15-2.85L10 13.6l2.85-1.15z" fill="#fff"/></svg>
         <h1>Hunch</h1>
@@ -101,7 +120,7 @@
                 </a>
                 <a class="card" href="https://github.com/ralt/hunch/blob/main/DEVELOPMENT.md">
                     <h3>Run it yourself</h3>
-                    <p style="color:var(--text-muted)">A Docker quick start, console commands, configuration, and how to deploy it on Upsun.</p>
+                    <p style="color:var(--text-muted)">A Docker quick start, console commands, configuration, and how to deploy it on Symfony Cloud.</p>
                     <p class="more">Get set up →</p>
                 </a>
             </div>
@@ -109,7 +128,28 @@
     </div>
 
     <footer>
-        Open source (MIT) · <a href="https://github.com/ralt/hunch">github.com/ralt/hunch</a>
+        Open source (GPLv3) · <a href="https://github.com/ralt/hunch">github.com/ralt/hunch</a>
     </footer>
+
+    <script>
+    (function(){
+        var toggle=document.querySelector('.theme-toggle');
+        if(!toggle)return;
+        var root=document.documentElement;
+        var sun=toggle.querySelector('.icon-sun'), moon=toggle.querySelector('.icon-moon');
+        var stored=localStorage.getItem('theme');
+        var dark=stored?stored==='dark':window.matchMedia('(prefers-color-scheme:dark)').matches;
+        function apply(d){
+            dark=d;
+            root.setAttribute('data-theme',d?'dark':'light');
+            toggle.setAttribute('aria-checked',String(d));
+            sun.style.display=d?'none':'block';
+            moon.style.display=d?'block':'none';
+        }
+        apply(dark);
+        toggle.addEventListener('click',function(){apply(!dark);localStorage.setItem('theme',dark?'dark':'light')});
+        window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(e){if(!localStorage.getItem('theme')){apply(e.matches)}});
+    })();
+    </script>
 </body>
 </html>
