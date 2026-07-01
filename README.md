@@ -33,6 +33,10 @@ Accounts are invite-only (an admin provisions them — no open sign-up), and eac
 
 ## Try it
 
+Connect any IMAP account (Proton, Gmail, Fastmail, …); Hunch syncs it in the background and indexes it **on your own machine** — you can watch the count climb, and search as soon as there's anything to find.
+
+![The Mailboxes screen: two connected IMAP accounts with per-mailbox sync status and indexed counts, plus the add-mailbox form](docs/screenshot-mailboxes.png)
+
 Hunch is self-hosted and deploys on [Symfony Cloud](https://symfony.com/cloud/). To run it yourself, see **[DEVELOPMENT.md](DEVELOPMENT.md)** for setup and **[ARCHITECTURE.md](ARCHITECTURE.md)** for how it's built and why.
 
 ## License
