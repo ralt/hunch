@@ -85,50 +85,85 @@ final class SyncService
             $dir = \sprintf('%s/%s/%s/%s', $this->maildir, $userId, $mbId, $this->sanitize($folder));
             @mkdir($dir, 0o775, true);
 
-            // Process in ascending UID order and persist the cursor (lastUid)
-            // after EVERY batch. This is what makes a large mailbox actually
-            // finish: each batch indexes genuinely-new messages (we skip
-            // uid <= lastUid, whose bodies aren't even fetched — webklex loads
-            // bodies lazily), and an interrupted sync resumes from where it
-            // stopped instead of restarting from scratch. (->all() is required;
-            // webklex sends an invalid SEARCH without it, and its whereUid()
-            // quotes ranges into invalid sequence sets, so we can't narrow
-            // server-side.)
+            // webklex can't narrow server-side (its whereUid() quotes ranges into
+            // invalid sequence sets, and it sends an invalid SEARCH without
+            // ->all()), so we page through with a client-side cutoff.
             $folderNew = 0;
             $page = 1;
-            do {
-                $messages = $client->getFolder($folder)->query()
-                    ->all()->setFetchOrder('asc')->limit($perPage, $page)->get();
-                $count = $messages->count();
 
-                $batch = [];
-                $batchMax = $mb->lastUid($folder);
-                foreach ($messages as $message) {
-                    $uid = (int) $message->getUid();
-                    if ($uid <= $mb->lastUid($folder)) {
-                        continue; // already synced — skipped before its body is fetched
+            if ($last <= 0) {
+                // First/full sync: ascending, persisting the cursor after EVERY
+                // batch so a large initial sync resumes instead of restarting.
+                do {
+                    $messages = $client->getFolder($folder)->query()
+                        ->all()->setFetchOrder('asc')->limit($perPage, $page)->get();
+                    $count = $messages->count();
+
+                    $batch = [];
+                    $batchMax = $mb->lastUid($folder);
+                    foreach ($messages as $message) {
+                        $uid = (int) $message->getUid();
+                        if ($uid <= $mb->lastUid($folder)) {
+                            continue; // already synced — skipped before its body is fetched
+                        }
+                        [$doc, $raw] = $this->toDocument($userId, $mbId, $folder, $uid, $message);
+                        $this->writeDoc($dir, $uid, $doc, $raw);
+                        $batch[] = $doc;
+                        $batchMax = max($batchMax, $uid);
                     }
-                    [$doc, $raw] = $this->toDocument($userId, $mbId, $folder, $uid, $message);
-                    if (null !== $raw) {
-                        @file_put_contents("$dir/$uid.eml", $raw);
+                    if ($batch) {
+                        $this->index->add($batch);
+                        $total += \count($batch);
+                        $folderNew += \count($batch);
+                        $mb->setLastUid($folder, $batchMax);
+                        $this->em->flush();
+                        $progress(\sprintf('%s: indexed %d (uid %d)', $folder, $folderNew, $batchMax));
                     }
-                    file_put_contents("$dir/$uid.json", json_encode($doc));
-                    $batch[] = $doc;
-                    $batchMax = max($batchMax, $uid);
-                }
-                if ($batch) {
-                    $this->index->add($batch);
-                    $total += \count($batch);
-                    $folderNew += \count($batch);
-                    // Durable progress: persist the cursor so a restart resumes here.
-                    $mb->setLastUid($folder, $batchMax);
+                    unset($messages, $batch);
+                    gc_collect_cycles();
+                    ++$page;
+                } while ($count === $perPage);
+            } else {
+                // Incremental sync: descending, so the newest messages come first
+                // and we STOP as soon as we reach an already-synced UID — instead
+                // of re-paging the whole mailbox to find a handful of new mail.
+                // Re-indexing is idempotent (docs keyed by uid), so we only need
+                // to advance the cursor once the run finishes.
+                $newMax = $last;
+                $reachedSynced = false;
+                do {
+                    $messages = $client->getFolder($folder)->query()
+                        ->all()->setFetchOrder('desc')->limit($perPage, $page)->get();
+                    $count = $messages->count();
+
+                    $batch = [];
+                    foreach ($messages as $message) {
+                        $uid = (int) $message->getUid();
+                        if ($uid <= $last) {
+                            $reachedSynced = true; // desc order: everything after is older too
+                            continue;
+                        }
+                        [$doc, $raw] = $this->toDocument($userId, $mbId, $folder, $uid, $message);
+                        $this->writeDoc($dir, $uid, $doc, $raw);
+                        $batch[] = $doc;
+                        $newMax = max($newMax, $uid);
+                    }
+                    if ($batch) {
+                        $this->index->add($batch);
+                        $total += \count($batch);
+                        $folderNew += \count($batch);
+                        $progress(\sprintf('%s: indexed %d (uid %d)', $folder, $folderNew, $newMax));
+                    }
+                    unset($messages, $batch);
+                    gc_collect_cycles();
+                    ++$page;
+                } while ($count === $perPage && !$reachedSynced);
+
+                if ($newMax > $last) {
+                    $mb->setLastUid($folder, $newMax);
                     $this->em->flush();
-                    $progress(\sprintf('%s: indexed %d (uid %d)', $folder, $folderNew, $batchMax));
                 }
-                unset($messages, $batch);
-                gc_collect_cycles();
-                ++$page;
-            } while ($count === $perPage);
+            }
 
             $progress(\sprintf('%s: done (%d new)', $folder, $folderNew));
         }
@@ -193,6 +228,15 @@ final class SyncService
         $doc = array_map(fn ($v) => \is_string($v) ? $this->utf8($v) : $v, $doc);
 
         return [$doc, $raw];
+    }
+
+    /** Write the raw .eml (if available) and the indexable .json sidecar for one message. */
+    private function writeDoc(string $dir, int $uid, array $doc, ?string $raw): void
+    {
+        if (null !== $raw) {
+            @file_put_contents("$dir/$uid.eml", $raw);
+        }
+        file_put_contents("$dir/$uid.json", json_encode($doc));
     }
 
     /** Force valid UTF-8, substituting any stray/invalid bytes. */
