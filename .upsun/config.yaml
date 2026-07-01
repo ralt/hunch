@@ -1,6 +1,6 @@
-# Upsun deployment — Meilisearch runs as its own application.
+# Symfony Cloud deployment — Meilisearch runs as its own application.
 #
-# Meilisearch isn't a managed Upsun service, so we run it as a second app
+# Meilisearch isn't a managed Symfony Cloud service, so we run it as a second app
 # ("search"): a lean container that downloads the binary at build time and runs
 # it as its web process on the internal network. The PHP app reaches it via an
 # app-to-app relationship (no public route for "search").
@@ -34,11 +34,16 @@ applications:
                 set -eu
                 php bin/console doctrine:schema:update --force --no-interaction
                 php bin/console cache:clear --no-warmup
-        # Background worker: processes mailbox syncs off the request path.
+        # Two background workers, mirroring the messenger transports (see
+        # config/packages/messenger.yaml): interactive searches stay responsive
+        # because a long-running mailbox sync consumes a separate queue.
         workers:
+            search:
+                commands:
+                    start: php bin/console messenger:consume search --time-limit=3600
             sync:
                 commands:
-                    start: php -d memory_limit=512M bin/console messenger:consume async --time-limit=3600
+                    start: php -d memory_limit=512M bin/console messenger:consume sync --time-limit=3600
         mounts:
             "/var":
                 source: storage

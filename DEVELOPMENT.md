@@ -12,7 +12,7 @@ docker compose exec app php bin/console hunch:user:create you@example.com --admi
 
 Then, in the app:
 
-1. **Settings** → add your Anthropic API key.
+1. **Settings** → pick your AI provider (Anthropic, OpenAI, or Ollama for local inference) and add its key.
 2. **Mailboxes** → add an IMAP account (use **"Check settings"** first) → it syncs in the background.
 3. **Search** → ask for an email in plain language.
 
@@ -56,12 +56,12 @@ Environment is set in `.env` (committed defaults; put secrets in `.env.local`, w
 
 IMAP accounts and each user's AI provider key are configured **in the app** (per user), not via environment.
 
-## Deploying on Upsun
+## Deploying on Symfony Cloud
 
-Hunch ships with an [Upsun](https://upsun.com) configuration (`.upsun/config.yaml`) that provisions three moving parts:
+Hunch ships with a [Symfony Cloud](https://symfony.com/cloud/) configuration (`.upsun/config.yaml`) that provisions these moving parts:
 
-- **`app`** — the PHP application, with a `sync` worker (background mailbox sync) and a half-hourly `hunch:sync` cron.
-- **`search`** — Meilisearch, run as a second application (it isn't a managed Upsun service): it downloads the binary at build time and serves on the internal network only.
+- **`app`** — the PHP application, with `search` and `sync` workers (isolated so a long mailbox sync never blocks interactive search) and a half-hourly `hunch:sync` cron.
+- **`search`** — Meilisearch, run as a second application (it isn't a managed Symfony Cloud service): it downloads the binary at build time and serves on the internal network only.
 - **`db`** — PostgreSQL 16.
 - **`mercure`** — a managed [Mercure](https://mercure.rocks) hub for the live search stream, exposed to the browser on the same origin at `/.well-known/mercure`.
 
@@ -70,8 +70,8 @@ Only `app` is public; `search`, `db`, and `mercure` are reached over internal re
 ### 1. Install the CLI and create a project
 
 ```bash
-# https://docs.upsun.com/administration/cli.html
-curl -fsS https://raw.githubusercontent.com/platformsh/cli/main/installer.sh | bash
+# https://symfony.com/cloud/
+curl -fs https://get.symfony.com/cloud/configurator | bash
 upsun auth:login
 upsun project:create --title hunch          # then link this repo:
 upsun project:set-remote <project-id>

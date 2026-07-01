@@ -9,7 +9,7 @@ How Hunch is built and why. For what Hunch *is*, see the [README](README.md); fo
 - **[Meilisearch](https://www.meilisearch.com)** — the search index, with its built-in on-device HuggingFace embedder for hybrid keyword + semantic search.
 - **[Mercure](https://mercure.rocks)** — real-time updates pushed to the browser over SSE.
 - **PostgreSQL** — settings, users, and conversation history.
-- **[Upsun](https://upsun.com)** — deployment target (`.upsun/config.yaml`).
+- **[Symfony Cloud](https://symfony.com/cloud/)** — deployment target (`.upsun/config.yaml`).
 
 The AI provider is Anthropic (Claude) today, and is intended to become pluggable.
 

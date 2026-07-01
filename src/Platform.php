@@ -3,21 +3,21 @@
 namespace App;
 
 /**
- * Maps Upsun's runtime wiring into the env vars the app expects, so the same
- * code works locally and on Upsun with no config changes:
+ * Maps Symfony Cloud's runtime wiring into the env vars the app expects, so the same
+ * code works locally and on Symfony Cloud with no config changes:
  *
  *   - PLATFORM_RELATIONSHIPS["meilisearch"] -> MEILI_URL  (the "search" app)
  *   - MEILI_MASTER_KEY                      -> MEILISEARCH_API_KEY
  *
  * Called from public/index.php and bin/console before the kernel boots, so
- * %env(MEILI_URL)% / %env(MEILISEARCH_API_KEY)% resolve correctly. No-op off Upsun.
+ * %env(MEILI_URL)% / %env(MEILISEARCH_API_KEY)% resolve correctly. No-op off Symfony Cloud.
  */
 final class Platform
 {
     public static function bootstrap(): void
     {
         if (false === ($rels = getenv('PLATFORM_RELATIONSHIPS'))) {
-            // Not on Upsun — leave .env values in place.
+            // Not on Symfony Cloud — leave .env values in place.
         } else {
             $decoded = json_decode(base64_decode($rels), true) ?: [];
 
