@@ -11,7 +11,7 @@ How Hunch is built and why. For what Hunch *is*, see the [README](README.md); fo
 - **PostgreSQL** — settings, users, and conversation history.
 - **[Symfony Cloud](https://symfony.com/cloud/)** — deployment target (`.upsun/config.yaml`).
 
-The AI provider is Anthropic (Claude) today, and is intended to become pluggable.
+The AI provider is pluggable per user: Anthropic (Claude), OpenAI (GPT), or Ollama (local inference). See `App\Service\AgentFactory`.
 
 ## How it works
 
@@ -22,7 +22,7 @@ IMAP account ──(background worker)──▶ local Maildir (.eml + .json)
                               Meilisearch (on-device HuggingFace embedder)
                                    hybrid keyword + semantic, scoped per user
                                             │
-                                Symfony AI Agent (LLM: Anthropic today)
+                          Symfony AI Agent (Anthropic / OpenAI / Ollama)
                                    search → clarify → present
                                             │
                                    You: ask in plain language, view the results

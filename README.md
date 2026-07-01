@@ -23,7 +23,7 @@ Search in most mail apps is a keyword lottery: you have to remember a word that'
 - Teams who want a private, self-hosted way to search their own inboxes.
 - People who'd rather *ask* for an email than reverse-engineer the search box.
 
-Accounts are invite-only (an admin provisions them — no open sign-up), and each person brings their own AI provider key. Anthropic's Claude powers it today, with more providers planned.
+Accounts are invite-only (an admin provisions them — no open sign-up), and each person brings their own model: **Anthropic (Claude), OpenAI (GPT), or Ollama** to run inference locally on your own hardware with no API key at all.
 
 ## Try it
 
