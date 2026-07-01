@@ -8,9 +8,9 @@ You connect a mailbox, Hunch quietly indexes it, and then you just talk to it. T
 
 ![Hunch resolving a vague search for a signed office lease — a conversation pane, live-ranked results, and the opened email side by side](docs/screenshot-lease.png)
 
-*Ask vaguely; Hunch searches, ranks by relevance, asks a question when it's unsure, and opens the email beside the conversation. (Dark mode below.)*
+*Ask vaguely; Hunch searches, ranks by relevance, asks a question when it's unsure, and opens the email beside the conversation. (A developer example in dark mode below.)*
 
-![The same workflow in dark mode, finding a newsletter recipe from a fuzzy description](docs/screenshot-recipe.png)
+![Finding a half-remembered kernel bug in an LKML archive: narrowing from a vague "use-after-free in the net stack" down to the specific r8169 driver report and its merged fix, in dark mode](docs/screenshot-lkml.png)
 
 ## Why you'd want it
 
