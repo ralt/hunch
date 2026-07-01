@@ -302,11 +302,13 @@
         // --- Mercure stream --------------------------------------------------
         function openMercure(t) {
             if (!t || !mercureUrl || es) return;
-            // mercureUrl may be relative (same-origin route on Upsun) or absolute
-            // (local hub); resolving against the origin handles both.
+            // mercureUrl may be relative (same-origin route on Symfony Cloud) or
+            // absolute (local hub); resolving against the origin handles both.
             const u = new URL(mercureUrl, window.location.origin);
             u.searchParams.append('topic', t);
-            es = new EventSource(u.toString());
+            // withCredentials so the scoped mercureAuthorization cookie is sent
+            // (the hub authorizes the subscription against it).
+            es = new EventSource(u.toString(), { withCredentials: true });
             es.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch (_) {} };
         }
         function handle(p) {

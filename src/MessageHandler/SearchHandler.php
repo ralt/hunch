@@ -38,9 +38,14 @@ final class SearchHandler
     ) {
     }
 
-    public static function topic(string $conversationId): string
+    /**
+     * Per-user topic namespace. The subscriber cookie grants this exact topic
+     * (not a template — Mercure treats relative URI templates as match-all), so
+     * a browser can only subscribe to the conversation it currently holds.
+     */
+    public static function topic(string $userId, string $conversationId): string
     {
-        return 'hunch/conversation/'.$conversationId;
+        return 'hunch/user/'.$userId.'/conversation/'.$conversationId;
     }
 
     public function __invoke(SearchMessage $message): void
@@ -52,8 +57,8 @@ final class SearchHandler
         if (null === $conversation) {
             return;
         }
-        $topic = self::topic($message->conversationId);
         $user = $conversation->getUser();
+        $topic = self::topic((string) $user->getId(), $message->conversationId);
 
         $this->publish($topic, ['type' => 'status', 'text' => 'Searching…']);
 
@@ -170,7 +175,9 @@ final class SearchHandler
     private function publish(string $topic, array $data): void
     {
         try {
-            $this->hub->publish(new Update($topic, json_encode($data, \JSON_THROW_ON_ERROR)));
+            // private: true — the hub delivers this only to subscribers whose JWT
+            // authorizes the topic, so users can't receive each other's streams.
+            $this->hub->publish(new Update($topic, json_encode($data, \JSON_THROW_ON_ERROR), true));
         } catch (\Throwable $e) {
             $this->logger->warning('Mercure publish failed: '.$e->getMessage());
         }

@@ -56,3 +56,4 @@ Postgres stores users, mailbox settings (with encrypted IMAP credentials), AI co
 - **Encrypted secrets.** IMAP passwords and each user's AI provider key are encrypted at rest (libsodium, keyed from `APP_SECRET`).
 - **Invite-only.** No open registration; admins provision users, who set a password via a one-time, single-use, expiring activation link.
 - **Read-only.** The app can only read and display mail — no send, delete, or modify.
+- **Scoped real-time.** Mercure updates are published **private** and topics are namespaced per user (`hunch/user/{id}/conversation/{id}`); each browser gets a subscriber-JWT cookie authorizing only its own conversation topic. Anonymous subscription is disabled, so one user can't subscribe to (or receive) another's search stream. (The managed Symfony Cloud hub must likewise keep anonymous access off.)

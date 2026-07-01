@@ -79,7 +79,7 @@ final class EmailSearchTool
             $this->hub->publish(new Update($topic, json_encode([
                 'type' => 'candidates',
                 'candidates' => $this->collector->rankedList(),
-            ], \JSON_THROW_ON_ERROR)));
+            ], \JSON_THROW_ON_ERROR), true)); // private: only the authorized subscriber receives it
         } catch (\Throwable) {
             // Live updates are best-effort; the final payload still arrives.
         }

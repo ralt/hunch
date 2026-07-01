@@ -16,6 +16,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mercure\Authorization;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
@@ -37,11 +38,19 @@ final class SearchController extends AbstractController
     }
 
     #[Route('/', name: 'home', methods: ['GET'])]
-    public function home(Request $request): Response
+    public function home(Request $request, Authorization $authorization): Response
     {
         /** @var User $user */
         $user = $this->getUser();
         $conversation = $this->loadConversation($request->query->get('conversation'), $user);
+        $topic = $conversation ? SearchHandler::topic((string) $user->getId(), (string) $conversation->getId()) : '';
+
+        // Grant this browser a Mercure subscriber cookie for exactly this
+        // conversation's topic. Without it the hub rejects the subscription, so
+        // one user can't eavesdrop on another's conversation stream.
+        if ('' !== $topic) {
+            $authorization->setCookie($request, [$topic]);
+        }
 
         return $this->render('search/index.html.twig', [
             'conversation' => $conversation,
@@ -49,12 +58,12 @@ final class SearchController extends AbstractController
             'candidates' => $conversation ? ResultCollector::rank($conversation->getCandidates()) : [],
             'recent' => $this->conversations->recentForUser($user),
             'mercurePublicUrl' => $this->mercurePublicUrl,
-            'topic' => $conversation ? SearchHandler::topic((string) $conversation->getId()) : '',
+            'topic' => $topic,
         ]);
     }
 
     #[Route('/search', name: 'search', methods: ['POST'])]
-    public function search(Request $request): JsonResponse
+    public function search(Request $request, Authorization $authorization): JsonResponse
     {
         /** @var User $user */
         $user = $this->getUser();
@@ -85,9 +94,14 @@ final class SearchController extends AbstractController
 
         $this->bus->dispatch(new SearchMessage((string) $conversation->getId()));
 
+        // Authorize this browser to subscribe to (only) this conversation's topic,
+        // including conversations created just now.
+        $topic = SearchHandler::topic((string) $user->getId(), (string) $conversation->getId());
+        $authorization->setCookie($request, [$topic]);
+
         return new JsonResponse([
             'conversationId' => (string) $conversation->getId(),
-            'topic' => SearchHandler::topic((string) $conversation->getId()),
+            'topic' => $topic,
         ]);
     }
 

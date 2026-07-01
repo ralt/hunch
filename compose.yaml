@@ -88,11 +88,12 @@ services:
             SERVER_NAME: ":80"
             MERCURE_PUBLISHER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
             MERCURE_SUBSCRIBER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
-            # Dev: allow the app origin and let the browser subscribe without a
-            # token (conversation topics are unguessable UUIDs).
+            # Subscriptions require a valid (per-user scoped) subscriber JWT — the
+            # app sets it as the mercureAuthorization cookie. No anonymous access,
+            # so one user can't eavesdrop on another's conversation topic.
+            # cors_origins enables credentialed CORS for the cross-origin dev hub.
             MERCURE_EXTRA_DIRECTIVES: |
                 cors_origins http://localhost:8000 http://127.0.0.1:8000
-                anonymous
         ports:
             - "1337:80"
 
