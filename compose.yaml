@@ -29,6 +29,7 @@ services:
             - ./src:/app/src
             - ./config:/app/config
             - ./templates:/app/templates
+            - ./tests:/app/tests
             - maildir:/app/var/maildir
         depends_on:
             db:

@@ -56,6 +56,20 @@ Environment is set in `.env` (committed defaults; put secrets in `.env.local`, w
 
 IMAP accounts and each user's AI provider key are configured **in the app** (per user), not via environment.
 
+## Tests
+
+Fast, dependency-light regression tests (PHPUnit) cover the areas most likely
+to break: the SSRF guard, per-conversation result ranking/dedup, credential
+encryption, and the search tool's argument boundary.
+
+```bash
+docker compose exec app vendor/bin/phpunit
+```
+
+Set `HUNCH_STRICT_SSRF=1` in a multi-tenant deployment to also block
+private/loopback hosts for the user-supplied Ollama URL and IMAP host (default
+`0`, since self-hosted setups legitimately use localhost).
+
 ## Deploying on Symfony Cloud
 
 Hunch ships with a [Symfony Cloud](https://symfony.com/cloud/) configuration (`.upsun/config.yaml`) that provisions these moving parts:
