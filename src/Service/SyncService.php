@@ -85,21 +85,25 @@ final class SyncService
             $dir = \sprintf('%s/%s/%s/%s', $this->maildir, $userId, $mbId, $this->sanitize($folder));
             @mkdir($dir, 0o775, true);
 
-            // webklex can't narrow server-side (its whereUid() quotes ranges into
-            // invalid sequence sets, and it sends an invalid SEARCH without
-            // ->all()), so we page through with a client-side cutoff.
+            // webklex can only fetch by page (its whereUid()/whereUidIn() emit an
+            // invalid SEARCH — "BAD Could not parse command"), so we page in
+            // ascending UID order. To avoid re-fetching the whole already-synced
+            // range every run, we first do a cheap SEARCH (UIDs only, no bodies)
+            // to learn how many messages precede the cursor, and START paging on
+            // the page where new mail begins (one page early, as a safety margin
+            // against ordering quirks). We index each page's new messages and
+            // persist the cursor per batch, so progress is durable: an interrupted
+            // sync resumes near where it stopped instead of restarting.
             //
-            // ->softFail(): skip an individual message that errors during fetch
-            // rather than aborting the whole batch. Notably, webklex insists on a
-            // STORE to reconcile the \Seen flag even in read-only PEEK mode; when
-            // that STORE fails it throws "flag could not be removed" — we'd rather
-            // drop that one message than lose the sync.
+            // ->softFail(): skip a message that errors during fetch rather than
+            // aborting the batch — notably webklex's "flag could not be removed"
+            // when it reconciles \Seen even in read-only PEEK mode.
             $folderNew = 0;
-            $page = 1;
+            $allUids = array_map('intval', $client->getFolder($folder)->query()->all()->search()->toArray());
+            $oldCount = \count(array_filter($allUids, static fn (int $u): bool => $u <= $last));
+            $page = max(1, intdiv($oldCount, $perPage)); // 1 page before the new mail
 
-            if ($last <= 0) {
-                // First/full sync: ascending, persisting the cursor after EVERY
-                // batch so a large initial sync resumes instead of restarting.
+            if ($oldCount < \count($allUids)) {
                 do {
                     $messages = $client->getFolder($folder)->query()->softFail()
                         ->all()->setFetchOrder('asc')->limit($perPage, $page)->get();
@@ -121,7 +125,7 @@ final class SyncService
                         $this->index->add($batch);
                         $total += \count($batch);
                         $folderNew += \count($batch);
-                        $mb->setLastUid($folder, $batchMax);
+                        $mb->setLastUid($folder, $batchMax); // ascending high-water; durable
                         $this->em->flush();
                         $progress(\sprintf('%s: indexed %d (uid %d)', $folder, $folderNew, $batchMax));
                     }
@@ -129,46 +133,6 @@ final class SyncService
                     gc_collect_cycles();
                     ++$page;
                 } while ($count === $perPage);
-            } else {
-                // Incremental sync: descending, so the newest messages come first
-                // and we STOP as soon as we reach an already-synced UID — instead
-                // of re-paging the whole mailbox to find a handful of new mail.
-                // Re-indexing is idempotent (docs keyed by uid), so we only need
-                // to advance the cursor once the run finishes.
-                $newMax = $last;
-                $reachedSynced = false;
-                do {
-                    $messages = $client->getFolder($folder)->query()->softFail()
-                        ->all()->setFetchOrder('desc')->limit($perPage, $page)->get();
-                    $count = $messages->count();
-
-                    $batch = [];
-                    foreach ($messages as $message) {
-                        $uid = (int) $message->getUid();
-                        if ($uid <= $last) {
-                            $reachedSynced = true; // desc order: everything after is older too
-                            continue;
-                        }
-                        [$doc, $raw] = $this->toDocument($userId, $mbId, $folder, $uid, $message);
-                        $this->writeDoc($dir, $uid, $doc, $raw);
-                        $batch[] = $doc;
-                        $newMax = max($newMax, $uid);
-                    }
-                    if ($batch) {
-                        $this->index->add($batch);
-                        $total += \count($batch);
-                        $folderNew += \count($batch);
-                        $progress(\sprintf('%s: indexed %d (uid %d)', $folder, $folderNew, $newMax));
-                    }
-                    unset($messages, $batch);
-                    gc_collect_cycles();
-                    ++$page;
-                } while ($count === $perPage && !$reachedSynced);
-
-                if ($newMax > $last) {
-                    $mb->setLastUid($folder, $newMax);
-                    $this->em->flush();
-                }
             }
 
             $progress(\sprintf('%s: done (%d new)', $folder, $folderNew));
