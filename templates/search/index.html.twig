@@ -263,7 +263,9 @@
         // --- Mercure stream --------------------------------------------------
         function openMercure(t) {
             if (!t || !mercureUrl || es) return;
-            const u = new URL(mercureUrl);
+            // mercureUrl may be relative (same-origin route on Upsun) or absolute
+            // (local hub); resolving against the origin handles both.
+            const u = new URL(mercureUrl, window.location.origin);
             u.searchParams.append('topic', t);
             es = new EventSource(u.toString());
             es.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch (_) {} };

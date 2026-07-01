@@ -28,6 +28,7 @@ applications:
         relationships:
             meilisearch: "search:http"
             database: "db:postgresql"
+            mercure: "mercure:mercure"
         hooks:
             deploy: |
                 set -eu
@@ -86,11 +87,24 @@ services:
     db:
         type: postgresql:16
 
+    # Real-time hub: the search worker publishes progress + live-ranked results
+    # here, and the browser subscribes over SSE. Managed service — App\Platform
+    # decodes the relationship into MERCURE_URL / MERCURE_JWT_SECRET at runtime.
+    mercure:
+        type: mercure:0
+
 # Only the PHP app is public; "search" stays internal (reached via relationship).
 routes:
     "https://{default}/":
         type: upstream
         upstream: "app:http"
+    # Browser subscribes to the hub on the same origin (no CORS) — the app
+    # publishes internally via the relationship.
+    "https://{default}/.well-known/mercure":
+        type: upstream
+        upstream: "mercure:mercure"
+        cache:
+            enabled: false
     "https://www.{default}/":
         type: redirect
         to: "https://{default}/"

@@ -44,6 +44,24 @@ final class Platform
                     $db['path'] ?? 'main',
                 ));
             }
+
+            // Mercure hub (managed service) -> MERCURE_URL (internal publish
+            // endpoint) + MERCURE_JWT_SECRET. The browser subscribes on the same
+            // origin via the /.well-known/mercure route, so the public URL is
+            // relative (no CORS).
+            $mercure = $decoded['mercure'][0] ?? null;
+            if (\is_array($mercure)) {
+                self::set('MERCURE_URL', \sprintf(
+                    '%s://%s:%s/.well-known/mercure',
+                    $mercure['scheme'] ?? 'http',
+                    $mercure['host'] ?? 'mercure.internal',
+                    $mercure['port'] ?? 80,
+                ));
+                self::set('MERCURE_PUBLIC_URL', '/.well-known/mercure');
+                if (isset($mercure['password'])) {
+                    self::set('MERCURE_JWT_SECRET', (string) $mercure['password']);
+                }
+            }
         }
 
         // Share one project secret across both apps.

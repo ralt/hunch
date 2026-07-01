@@ -63,8 +63,9 @@ Hunch ships with an [Upsun](https://upsun.com) configuration (`.upsun/config.yam
 - **`app`** — the PHP application, with a `sync` worker (background mailbox sync) and a half-hourly `hunch:sync` cron.
 - **`search`** — Meilisearch, run as a second application (it isn't a managed Upsun service): it downloads the binary at build time and serves on the internal network only.
 - **`db`** — PostgreSQL 16.
+- **`mercure`** — a managed [Mercure](https://mercure.rocks) hub for the live search stream, exposed to the browser on the same origin at `/.well-known/mercure`.
 
-Only `app` is public; `search` and `db` are reached over internal relationships, and `App\Platform` decodes those into `MEILI_URL` / `DATABASE_URL` at runtime.
+Only `app` is public; `search`, `db`, and `mercure` are reached over internal relationships, and `App\Platform` decodes those into `MEILI_URL` / `DATABASE_URL` / `MERCURE_URL` (+ JWT secret) at runtime.
 
 ### 1. Install the CLI and create a project
 
@@ -115,4 +116,4 @@ upsun ssh -A app -- php bin/console hunch:user:create you@example.com --admin
 # open the printed activation link, set a password, then add your API key + a mailbox in the app
 ```
 
-> **Note — real-time updates.** The live search UI streams results over a [Mercure](https://mercure.rocks) hub. The bundled Upsun config does **not** yet provision one, so to get live streaming in production you'll need a Mercure hub reachable by the app and the browser, wired via `MERCURE_URL` and `MERCURE_PUBLIC_URL` (plus the JWT secrets Mercure expects). Search still runs without it; the page just won't update live.
+Real-time search updates work out of the box: the `mercure` service is provisioned by the config and wired automatically — no extra variables to set.
