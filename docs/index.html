@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hunch — Find the email you half-remember</title>
-    <meta name="description" content="Semantic, conversational search over your own mail. Local-first, on-device embeddings, AI-powered. Not an email client.">
+    <title>Hunch — search your email by a hunch</title>
+    <meta name="description" content="Find any email by describing it in plain language — a conversation, not a keyword search. Private, self-hosted, read-only. Not an email client.">
     <link rel="icon" href="../public/favicon.svg" type="image/svg+xml">
     <style>
         :root {
@@ -22,11 +22,14 @@
         .hero .logo{width:64px;height:64px;margin:0 auto 1.5rem;display:block}
         .hero h1{font-size:3.5rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.75rem;
             background:linear-gradient(135deg,var(--accent),var(--accent-light));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-        .hero .tagline{font-size:1.35rem;color:var(--text-muted);max-width:620px;margin:0 auto 2rem}
+        .hero .tagline{font-size:1.35rem;color:var(--text-muted);max-width:640px;margin:0 auto 2rem}
         .hero .cta{display:inline-block;padding:.8rem 2rem;background:var(--accent);color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:1.05rem;transition:.2s}
         .hero .cta:hover{background:var(--accent-light);transform:translateY(-2px);box-shadow:0 6px 24px var(--glow)}
+        .hero .sub-link{display:block;margin-top:1rem;color:var(--text-muted);font-size:.95rem}
+        .hero .sub-link a{color:var(--accent)}
         .section{padding:3.5rem 0;border-top:1px solid var(--border)}
-        .section h2{font-size:1.9rem;text-align:center;margin-bottom:2.5rem;letter-spacing:-.02em}
+        .section h2{font-size:1.9rem;text-align:center;margin-bottom:.75rem;letter-spacing:-.02em}
+        .section .lead{text-align:center;color:var(--text-muted);max-width:640px;margin:0 auto 2.5rem}
         .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem}
         .step{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.6rem;transition:.2s}
         .step:hover{border-color:var(--accent);box-shadow:0 6px 24px var(--glow)}
@@ -37,11 +40,13 @@
         @media(max-width:640px){.cols{grid-template-columns:1fr}.hero h1{font-size:2.6rem}}
         .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.6rem}
         .card h3{margin-bottom:.6rem}
+        a.card{display:block;text-decoration:none;color:inherit;transition:.2s}
+        a.card:hover{border-color:var(--accent);box-shadow:0 6px 24px var(--glow);transform:translateY(-2px)}
+        a.card .more{color:var(--accent);font-weight:600}
         ul.clean{list-style:none}
         ul.clean li{padding:.25rem 0;color:var(--text-muted)}
         ul.clean li::before{content:"→ ";color:var(--accent);font-weight:700}
         .no li::before{content:"✕ ";color:var(--text-muted)}
-        code{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:.1rem .4rem;font-size:.9em}
         footer{text-align:center;padding:3rem 1.5rem;color:var(--text-muted);font-size:.9rem}
         footer a{color:var(--accent)}
     </style>
@@ -50,18 +55,20 @@
     <div class="hero">
         <svg class="logo" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="var(--accent)"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="#fff" stroke-width="2.4"/><line x1="18.8" y1="18.8" x2="24.5" y2="24.5" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/><path d="M14 9.6l1.15 2.85L18 13.6l-2.85 1.15L14 17.6l-1.15-2.85L10 13.6l2.85-1.15z" fill="#fff"/></svg>
         <h1>Hunch</h1>
-        <p class="tagline">Find the email you only half-remember — by describing it, not by guessing keywords.</p>
+        <p class="tagline">Find any email by describing it in your own words. A conversation, not a keyword search — no need to remember the exact words that are in the message.</p>
         <a class="cta" href="https://github.com/ralt/hunch">View on GitHub →</a>
+        <span class="sub-link">Want the details? <a href="https://github.com/ralt/hunch/blob/main/ARCHITECTURE.md">How it's built</a> · <a href="https://github.com/ralt/hunch/blob/main/DEVELOPMENT.md">Run it yourself</a></span>
     </div>
 
     <div class="container">
         <div class="section">
             <h2>Search your inbox by a hunch</h2>
+            <p class="lead">You rarely remember the words in an email — you remember the gist. Hunch is built for the gist.</p>
             <div class="steps">
-                <div class="step"><span class="n">1</span><h3>Connect a mailbox</h3><p>Any IMAP account — Proton, Gmail, Outlook. Credentials encrypted at rest.</p></div>
-                <div class="step"><span class="n">2</span><h3>Indexed on-device</h3><p>A background worker syncs it locally and embeds every message on your own machine — nothing sent to an embedding API.</p></div>
-                <div class="step"><span class="n">3</span><h3>Ask in plain language</h3><p>"The document the bank sent about my mortgage." A Claude agent searches, and asks a question if it's ambiguous.</p></div>
-                <div class="step"><span class="n">4</span><h3>Read the result</h3><p>Open and view the emails it finds. That's it — Hunch never sends or manages mail.</p></div>
+                <div class="step"><span class="n">1</span><h3>Connect a mailbox</h3><p>Any IMAP account — Proton, Gmail, Outlook. Your credentials are encrypted.</p></div>
+                <div class="step"><span class="n">2</span><h3>Indexed privately</h3><p>Hunch indexes your mail on your own machine. Nothing is shipped off to an embedding service to be read.</p></div>
+                <div class="step"><span class="n">3</span><h3>Ask in plain language</h3><p>"The document the bank sent about my mortgage." An AI agent searches, and asks a short question if it's unsure which one you mean.</p></div>
+                <div class="step"><span class="n">4</span><h3>Read it in place</h3><p>Matches stream in and re-rank as it searches; click one to read it right beside the conversation. Read-only, always.</p></div>
             </div>
         </div>
 
@@ -69,9 +76,9 @@
             <h2>What it is — and isn't</h2>
             <div class="cols">
                 <div class="card"><h3>It is</h3><ul class="clean">
-                    <li>Semantic, conversational search over your own mail</li>
-                    <li>Local-first — emails on your disk, embeddings on-device</li>
-                    <li>Multi-user, each with their own Anthropic key</li>
+                    <li>Conversational search over your own mail — by meaning, not keywords</li>
+                    <li>Private: your emails and their index stay on your machine</li>
+                    <li>Self-hosted and multi-user, each with their own AI provider key</li>
                     <li>A read-only viewer for the emails it finds</li>
                 </ul></div>
                 <div class="card"><h3>It isn't</h3><ul class="clean no">
@@ -84,16 +91,25 @@
         </div>
 
         <div class="section">
-            <h2>How it's built</h2>
+            <h2>Dig deeper</h2>
+            <p class="lead">Hunch is open source and self-hosted. Here's how it works under the hood and how to run your own.</p>
             <div class="cols">
-                <div class="card"><h3>Local-first &amp; private</h3><p style="color:var(--text-muted)">Meilisearch's HuggingFace embedder vectorizes every message locally with a multilingual model — an English query finds a French email, and your mail never leaves the box to be indexed. Only your query and a few snippets reach Claude.</p></div>
-                <div class="card"><h3>Async &amp; real-time</h3><p style="color:var(--text-muted)">Sync and search run in a background worker; progress and results are pushed to the browser live over a Mercure hub, so the page never freezes on a long agent run. Built on Symfony and the Symfony AI components.</p></div>
+                <a class="card" href="https://github.com/ralt/hunch/blob/main/ARCHITECTURE.md">
+                    <h3>Architecture</h3>
+                    <p style="color:var(--text-muted)">The stack, how sync and search work, and the design decisions behind local-first indexing, background workers, and real-time results.</p>
+                    <p class="more">Read the architecture →</p>
+                </a>
+                <a class="card" href="https://github.com/ralt/hunch/blob/main/DEVELOPMENT.md">
+                    <h3>Run it yourself</h3>
+                    <p style="color:var(--text-muted)">A Docker quick start, console commands, configuration, and how to deploy it on Upsun.</p>
+                    <p class="more">Get set up →</p>
+                </a>
             </div>
         </div>
     </div>
 
     <footer>
-        Open source (MIT) · Built with Symfony AI · <a href="https://github.com/ralt/hunch">github.com/ralt/hunch</a>
+        Open source (MIT) · <a href="https://github.com/ralt/hunch">github.com/ralt/hunch</a>
     </footer>
 </body>
 </html>
