@@ -8,7 +8,6 @@ use App\Enum\MessageRole;
 use App\Message\SearchMessage;
 use App\Repository\ConversationRepository;
 use App\Service\AgentFactory;
-use App\Service\Crypto;
 use App\Service\ResultCollector;
 use App\Service\SearchContext;
 use Doctrine\ORM\EntityManagerInterface;
@@ -32,7 +31,6 @@ final class SearchHandler
         private readonly ConversationRepository $conversations,
         private readonly EntityManagerInterface $em,
         private readonly AgentFactory $agentFactory,
-        private readonly Crypto $crypto,
         private readonly ResultCollector $collector,
         private readonly SearchContext $searchContext,
         private readonly HubInterface $hub,
@@ -59,8 +57,8 @@ final class SearchHandler
 
         $this->publish($topic, ['type' => 'status', 'text' => 'Searching…']);
 
-        if (!$user->hasAnthropicKey()) {
-            $this->finish($conversation, $topic, 'Add your Anthropic API key in Settings to search.');
+        if (!$user->isAiConfigured()) {
+            $this->finish($conversation, $topic, 'Add your AI provider key in Settings to search.');
 
             return;
         }
@@ -82,7 +80,7 @@ final class SearchHandler
         }
 
         try {
-            $agent = $this->agentFactory->forApiKey($this->crypto->decrypt($user->getAnthropicKeyEnc() ?? ''));
+            $agent = $this->agentFactory->forUser($user);
             $assistant = (string) $agent->call($bag, ['max_tokens' => 2048])->getContent();
         } catch (\Throwable $e) {
             $this->logger->error('Search failed: '.$e->getMessage());

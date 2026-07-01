@@ -9,7 +9,7 @@
             <div class="meta">
                 {% if u.pendingActivation %}awaiting activation (hasn't set a password yet){% else %}active{% endif %}
                 · {{ u.mailboxes|length }} mailbox(es)
-                · {{ u.hasAnthropicKey ? 'API key set' : 'no API key' }}
+                · AI: {{ u.aiProvider }}{{ u.isAiConfigured ? '' : ' (not configured)' }}
             </div>
         </div>
     {% endfor %}

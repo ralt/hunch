@@ -29,9 +29,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column]
     private string $password = '';
 
-    /** Encrypted Anthropic API key (per-user); null until the user sets one. */
+    /**
+     * Which AI provider drives this user's search: 'anthropic', 'openai', or
+     * 'ollama' (local inference). See App\Service\AgentFactory.
+     */
+    #[ORM\Column(length: 20, options: ['default' => 'anthropic'])]
+    private string $aiProvider = 'anthropic';
+
+    /** Encrypted API key for the provider (per-user); null for Ollama / until set. */
     #[ORM\Column(type: 'text', nullable: true)]
-    private ?string $anthropicKeyEnc = null;
+    private ?string $apiKeyEnc = null;
+
+    /** Optional model override; falls back to the provider's default when empty. */
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $aiModel = null;
+
+    /** Ollama server URL (e.g. http://localhost:11434); only used for the Ollama provider. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $aiBaseUrl = null;
 
     /**
      * SHA-256 hash of the one-time activation token (the plaintext only ever
@@ -147,21 +162,66 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->activationExpiresAt = null;
     }
 
-    public function getAnthropicKeyEnc(): ?string
+    public function getAiProvider(): string
     {
-        return $this->anthropicKeyEnc;
+        return $this->aiProvider;
     }
 
-    public function setAnthropicKeyEnc(?string $enc): static
+    public function setAiProvider(string $provider): static
     {
-        $this->anthropicKeyEnc = $enc;
+        $this->aiProvider = $provider;
 
         return $this;
     }
 
-    public function hasAnthropicKey(): bool
+    public function getApiKeyEnc(): ?string
     {
-        return null !== $this->anthropicKeyEnc && '' !== $this->anthropicKeyEnc;
+        return $this->apiKeyEnc;
+    }
+
+    public function setApiKeyEnc(?string $enc): static
+    {
+        $this->apiKeyEnc = $enc;
+
+        return $this;
+    }
+
+    public function hasApiKey(): bool
+    {
+        return null !== $this->apiKeyEnc && '' !== $this->apiKeyEnc;
+    }
+
+    public function getAiModel(): ?string
+    {
+        return $this->aiModel;
+    }
+
+    public function setAiModel(?string $model): static
+    {
+        $this->aiModel = $model ?: null;
+
+        return $this;
+    }
+
+    public function getAiBaseUrl(): ?string
+    {
+        return $this->aiBaseUrl;
+    }
+
+    public function setAiBaseUrl(?string $url): static
+    {
+        $this->aiBaseUrl = $url ?: null;
+
+        return $this;
+    }
+
+    /**
+     * Whether this user can run a search: key-based providers need a key;
+     * Ollama runs locally and only needs its server reachable (URL defaulted).
+     */
+    public function isAiConfigured(): bool
+    {
+        return 'ollama' === $this->aiProvider || $this->hasApiKey();
     }
 
     /** @return Collection<int, Mailbox> */

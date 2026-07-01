@@ -62,8 +62,8 @@ final class SearchController extends AbstractController
         if ($user->getMailboxes()->isEmpty()) {
             return new JsonResponse(['error' => 'Add a mailbox before searching.', 'redirect' => $this->generateUrl('mailboxes')], 400);
         }
-        if (!$user->hasAnthropicKey()) {
-            return new JsonResponse(['error' => 'Add your Anthropic API key in Settings.', 'redirect' => $this->generateUrl('settings')], 400);
+        if (!$user->isAiConfigured()) {
+            return new JsonResponse(['error' => 'Set up your AI provider in Settings.', 'redirect' => $this->generateUrl('settings')], 400);
         }
 
         $payload = json_decode($request->getContent(), true) ?: [];

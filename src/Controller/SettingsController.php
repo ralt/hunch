@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Service\AgentFactory;
 use App\Service\Crypto;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,11 +20,19 @@ final class SettingsController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
-        return $this->render('settings/index.html.twig', ['hasKey' => $user->hasAnthropicKey()]);
+        return $this->render('settings/index.html.twig', [
+            'provider' => $user->getAiProvider(),
+            'model' => $user->getAiModel(),
+            'baseUrl' => $user->getAiBaseUrl(),
+            'hasKey' => $user->hasApiKey(),
+            'providers' => AgentFactory::PROVIDERS,
+            'defaultModels' => AgentFactory::DEFAULT_MODELS,
+            'ollamaDefaultUrl' => AgentFactory::OLLAMA_DEFAULT_URL,
+        ]);
     }
 
-    #[Route('/anthropic-key', name: 'settings_anthropic_key', methods: ['POST'])]
-    public function setKey(Request $request, Crypto $crypto, EntityManagerInterface $em): Response
+    #[Route('/ai', name: 'settings_ai', methods: ['POST'])]
+    public function setAi(Request $request, Crypto $crypto, EntityManagerInterface $em): Response
     {
         /** @var User $user */
         $user = $this->getUser();
@@ -33,15 +42,27 @@ final class SettingsController extends AbstractController
             return $this->redirectToRoute('settings');
         }
 
-        $key = trim((string) $request->request->get('anthropic_key'));
-        if ('' === $key) {
-            $user->setAnthropicKeyEnc(null);
-            $this->addFlash('success', 'Anthropic API key cleared.');
-        } else {
-            $user->setAnthropicKeyEnc($crypto->encrypt($key));
-            $this->addFlash('success', 'Anthropic API key saved (encrypted).');
+        $provider = (string) $request->request->get('provider');
+        if (!\in_array($provider, AgentFactory::PROVIDERS, true)) {
+            $this->addFlash('error', 'Unknown provider.');
+
+            return $this->redirectToRoute('settings');
         }
+
+        $user->setAiProvider($provider);
+        $user->setAiModel(trim((string) $request->request->get('model')));
+        $user->setAiBaseUrl(trim((string) $request->request->get('base_url')));
+
+        // Blank key field keeps the stored one; a value replaces it; "__clear__" removes it.
+        $key = trim((string) $request->request->get('api_key'));
+        if ('__clear__' === $key) {
+            $user->setApiKeyEnc(null);
+        } elseif ('' !== $key) {
+            $user->setApiKeyEnc($crypto->encrypt($key));
+        }
+
         $em->flush();
+        $this->addFlash('success', 'AI settings saved.');
 
         return $this->redirectToRoute('settings');
     }

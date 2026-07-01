@@ -4,17 +4,67 @@
     <h1>Settings</h1>
 
     <div class="card">
-        <h3>Anthropic API key</h3>
+        <h3>AI provider</h3>
         <p class="dim">
-            Your own key powers the conversational search. It's stored encrypted at rest
-            and used only for your searches.
-            {% if hasKey %}<br><strong>A key is currently set.</strong> Submit a new one to replace it, or leave blank to clear.{% endif %}
+            Choose which model powers your conversational search. Keys are stored
+            encrypted at rest and used only for your searches. Ollama runs locally
+            on your own hardware — no key, just a reachable server.
         </p>
-        <form method="post" action="{{ path('settings_anthropic_key') }}">
-            <label>API key</label>
-            <input type="password" name="anthropic_key" placeholder="sk-ant-..." autocomplete="off">
+
+        <form method="post" action="{{ path('settings_ai') }}" id="ai-form">
+            <label for="provider">Provider</label>
+            <select name="provider" id="provider">
+                {% for p in providers %}
+                    <option value="{{ p }}" {{ provider == p ? 'selected' : '' }}>
+                        {{ {'anthropic': 'Anthropic (Claude)', 'openai': 'OpenAI (GPT)', 'ollama': 'Ollama (local)'}[p]|default(p) }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <div class="field-key">
+                <label for="api_key">API key</label>
+                <input type="password" name="api_key" id="api_key" autocomplete="off"
+                       placeholder="{{ hasKey ? '•••••• (leave blank to keep current)' : 'sk-...' }}">
+                {% if hasKey %}<p class="dim" style="font-size:.8rem">A key is set. Leave blank to keep it, type a new one to replace, or enter <code>__clear__</code> to remove.</p>{% endif %}
+            </div>
+
+            <div class="field-baseurl">
+                <label for="base_url">Ollama server URL</label>
+                <input type="text" name="base_url" id="base_url" autocomplete="off"
+                       value="{{ baseUrl }}" placeholder="{{ ollamaDefaultUrl }}">
+            </div>
+
+            <label for="model">Model <span class="dim">— optional; leave blank for the provider default</span></label>
+            <input type="text" name="model" id="model" autocomplete="off" value="{{ model }}"
+                   data-defaults="{{ defaultModels|json_encode|e('html_attr') }}"
+                   placeholder="{{ defaultModels[provider]|default('') }}">
+            <p class="dim" style="font-size:.8rem" id="model-hint"></p>
+
             <input type="hidden" name="_token" value="{{ csrf_token('settings') }}">
             <p><button type="submit">Save</button></p>
         </form>
     </div>
+
+    <script>
+    (function () {
+        const providerEl = document.getElementById('provider');
+        const keyField = document.querySelector('.field-key');
+        const urlField = document.querySelector('.field-baseurl');
+        const modelEl = document.getElementById('model');
+        const hint = document.getElementById('model-hint');
+        const defaults = JSON.parse(modelEl.dataset.defaults || '{}');
+
+        function sync() {
+            const p = providerEl.value;
+            keyField.style.display = (p === 'ollama') ? 'none' : '';
+            urlField.style.display = (p === 'ollama') ? '' : 'none';
+            modelEl.placeholder = defaults[p] || '';
+            hint.textContent = (p === 'ollama')
+                ? 'Pick a tool-capable model you have pulled (e.g. llama3.1, qwen2.5). Default: ' + (defaults.ollama || '')
+                : 'Default: ' + (defaults[p] || '');
+        }
+        providerEl.addEventListener('change', sync);
+        sync();
+    })();
+    </script>
 {% endblock %}
