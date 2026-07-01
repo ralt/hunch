@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>Admin <span class="dim">— users</span></h1>
+
+    {% for u in users %}
+        <div class="card">
+            <h3>{{ u.email }} {% if u.isAdmin %}<span class="dim">· admin</span>{% endif %}</h3>
+            <div class="meta">
+                {% if u.pendingActivation %}awaiting activation (hasn't set a password yet){% else %}active{% endif %}
+                · {{ u.mailboxes|length }} mailbox(es)
+                · {{ u.hasAnthropicKey ? 'API key set' : 'no API key' }}
+            </div>
+        </div>
+    {% endfor %}
+
+    <div class="card">
+        <h3>Create a user</h3>
+        <p class="dim">They'll set their own password via the activation link shown after you create them.</p>
+        <form method="post" action="{{ path('admin_user_new') }}">
+            <label>Email</label>
+            <input type="email" name="email" placeholder="teammate@example.com" required>
+            <label><input type="checkbox" name="admin" value="1"> Grant admin</label>
+            <input type="hidden" name="_token" value="{{ csrf_token('admin') }}">
+            <p><button type="submit">Create user</button></p>
+        </form>
+    </div>
+{% endblock %}

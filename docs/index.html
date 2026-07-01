@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunch — Find the email you half-remember</title>
+    <meta name="description" content="Semantic, conversational search over your own mail. Local-first, on-device embeddings, AI-powered. Not an email client.">
+    <link rel="icon" href="../public/favicon.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --bg:#f4f1ea; --surface:#fff; --accent:#b5552d; --accent-light:#cf6a3e;
+            --text:#2b2b2b; --text-muted:#8a8275; --border:#ece6d8; --glow:rgba(181,85,45,.08);
+        }
+        @media(prefers-color-scheme:dark){:root{
+            --bg:#171411; --surface:#211d19; --accent:#e0783f; --accent-light:#f0915a;
+            --text:#ece6d8; --text-muted:#a89e8f; --border:#322c25; --glow:rgba(224,120,63,.12);
+        }}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
+        .container{max-width:960px;margin:0 auto;padding:0 1.5rem}
+        .hero{text-align:center;padding:6rem 1.5rem 3rem}
+        .hero .logo{width:64px;height:64px;margin:0 auto 1.5rem;display:block}
+        .hero h1{font-size:3.5rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.75rem;
+            background:linear-gradient(135deg,var(--accent),var(--accent-light));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+        .hero .tagline{font-size:1.35rem;color:var(--text-muted);max-width:620px;margin:0 auto 2rem}
+        .hero .cta{display:inline-block;padding:.8rem 2rem;background:var(--accent);color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:1.05rem;transition:.2s}
+        .hero .cta:hover{background:var(--accent-light);transform:translateY(-2px);box-shadow:0 6px 24px var(--glow)}
+        .section{padding:3.5rem 0;border-top:1px solid var(--border)}
+        .section h2{font-size:1.9rem;text-align:center;margin-bottom:2.5rem;letter-spacing:-.02em}
+        .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem}
+        .step{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.6rem;transition:.2s}
+        .step:hover{border-color:var(--accent);box-shadow:0 6px 24px var(--glow)}
+        .step .n{display:inline-flex;width:30px;height:30px;align-items:center;justify-content:center;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;margin-bottom:.75rem}
+        .step h3{font-size:1.1rem;margin-bottom:.35rem}
+        .step p{color:var(--text-muted);font-size:.95rem}
+        .cols{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+        @media(max-width:640px){.cols{grid-template-columns:1fr}.hero h1{font-size:2.6rem}}
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.6rem}
+        .card h3{margin-bottom:.6rem}
+        ul.clean{list-style:none}
+        ul.clean li{padding:.25rem 0;color:var(--text-muted)}
+        ul.clean li::before{content:"→ ";color:var(--accent);font-weight:700}
+        .no li::before{content:"✕ ";color:var(--text-muted)}
+        code{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:.1rem .4rem;font-size:.9em}
+        footer{text-align:center;padding:3rem 1.5rem;color:var(--text-muted);font-size:.9rem}
+        footer a{color:var(--accent)}
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <svg class="logo" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="var(--accent)"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="#fff" stroke-width="2.4"/><line x1="18.8" y1="18.8" x2="24.5" y2="24.5" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/><path d="M14 9.6l1.15 2.85L18 13.6l-2.85 1.15L14 17.6l-1.15-2.85L10 13.6l2.85-1.15z" fill="#fff"/></svg>
+        <h1>Hunch</h1>
+        <p class="tagline">Find the email you only half-remember — by describing it, not by guessing keywords.</p>
+        <a class="cta" href="https://github.com/ralt/hunch">View on GitHub →</a>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <h2>Search your inbox by a hunch</h2>
+            <div class="steps">
+                <div class="step"><span class="n">1</span><h3>Connect a mailbox</h3><p>Any IMAP account — Proton, Gmail, Outlook. Credentials encrypted at rest.</p></div>
+                <div class="step"><span class="n">2</span><h3>Indexed on-device</h3><p>A background worker syncs it locally and embeds every message on your own machine — nothing sent to an embedding API.</p></div>
+                <div class="step"><span class="n">3</span><h3>Ask in plain language</h3><p>"The document the bank sent about my mortgage." A Claude agent searches, and asks a question if it's ambiguous.</p></div>
+                <div class="step"><span class="n">4</span><h3>Read the result</h3><p>Open and view the emails it finds. That's it — Hunch never sends or manages mail.</p></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>What it is — and isn't</h2>
+            <div class="cols">
+                <div class="card"><h3>It is</h3><ul class="clean">
+                    <li>Semantic, conversational search over your own mail</li>
+                    <li>Local-first — emails on your disk, embeddings on-device</li>
+                    <li>Multi-user, each with their own Anthropic key</li>
+                    <li>A read-only viewer for the emails it finds</li>
+                </ul></div>
+                <div class="card"><h3>It isn't</h3><ul class="clean no">
+                    <li>An email client</li>
+                    <li>Sending or replying to mail</li>
+                    <li>Folder management or inbox triage</li>
+                    <li>A hosted service that reads your mail in the cloud</li>
+                </ul></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>How it's built</h2>
+            <div class="cols">
+                <div class="card"><h3>Local-first &amp; private</h3><p style="color:var(--text-muted)">Meilisearch's HuggingFace embedder vectorizes every message locally with a multilingual model — an English query finds a French email, and your mail never leaves the box to be indexed. Only your query and a few snippets reach Claude.</p></div>
+                <div class="card"><h3>Async &amp; real-time</h3><p style="color:var(--text-muted)">Sync and search run in a background worker; progress and results are pushed to the browser live over a Mercure hub, so the page never freezes on a long agent run. Built on Symfony and the Symfony AI components.</p></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Open source (MIT) · Built with Symfony AI · <a href="https://github.com/ralt/hunch">github.com/ralt/hunch</a>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,28 @@
+parameters:
+    hunch.meili_url: '%env(MEILI_URL)%'
+    hunch.meili_index: '%env(MEILI_INDEX)%'
+    hunch.embed_model: '%env(EMBED_MODEL)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/Entity/'
+
+    # Meilisearch wrapper: index lifecycle, on-device HuggingFace embedder, hybrid search.
+    App\Service\MailIndex:
+        arguments:
+            $url: '%hunch.meili_url%'
+            $apiKey: '%env(default::MEILISEARCH_API_KEY)%'
+            $indexName: '%hunch.meili_index%'
+            $embedModel: '%hunch.embed_model%'
+
+    # Shared per request: the present_results tool / controller, and the
+    # per-user scope, must see the same instance.
+    App\Service\ResultCollector: ~
+    App\Service\SearchContext: ~

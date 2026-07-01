@@ -1,0 +1,5 @@
+vendor/
+var/
+.git/
+.env.local
+bin/meilisearch

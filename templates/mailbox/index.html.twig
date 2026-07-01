@@ -1,0 +1,106 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>Mailboxes <span class="dim">— IMAP accounts to search</span></h1>
+
+    {% for row in rows %}
+        {% set mb = row.mb %}
+        <div class="card">
+            <h3>{{ mb.label }}
+                {% if mb.syncStatus == 'syncing' %}<span class="dim">· indexing…</span>
+                {% elseif mb.syncStatus == 'error' %}<span style="color:#b5552d">· error</span>
+                {% elseif mb.syncStatus == 'ok' %}<span style="color:#2c5a2c">· synced</span>
+                {% else %}<span class="dim">· not synced yet</span>{% endif %}
+            </h3>
+            <div class="meta">{{ mb.imapUsername }} @ {{ mb.imapHost }}:{{ mb.imapPort }} ({{ mb.security }}) · folders: {{ mb.folders|join(', ') }}</div>
+            <div class="meta" style="margin-top:.3rem">
+                {% if row.count is null %}
+                    <span title="Search index unavailable">indexed: —</span>
+                {% else %}
+                    <strong>{{ row.count }}</strong> email(s) indexed{% if mb.syncStatus == 'syncing' %} so far{% endif %}
+                {% endif %}
+                {% if mb.lastSyncedAt %} · last synced {{ mb.lastSyncedAt|date('Y-m-d H:i') }}{% endif %}
+            </div>
+            {% if mb.lastError %}
+                <div class="flash error" style="margin-top:.5rem">Last sync error: {{ mb.lastError }}</div>
+            {% endif %}
+            <p style="margin:.6rem 0 0; display:flex; gap:.5rem">
+                <form method="post" action="{{ path('mailbox_sync', {id: mb.id}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('mailbox') }}">
+                    <button type="submit">Sync now</button>
+                </form>
+                <form method="post" action="{{ path('mailbox_delete', {id: mb.id}) }}" onsubmit="return confirm('Remove this mailbox?')">
+                    <input type="hidden" name="_token" value="{{ csrf_token('mailbox') }}">
+                    <button type="submit" class="ghost">Delete</button>
+                </form>
+            </p>
+        </div>
+    {% else %}
+        <p class="dim">No mailboxes yet. Add one below.</p>
+    {% endfor %}
+
+    <div class="card">
+        <h3>Add a mailbox</h3>
+        <form id="mb-form" method="post" action="{{ path('mailbox_new') }}">
+            <label>Label</label>
+            <input type="text" name="label" placeholder="Personal Proton" required>
+            <div class="row">
+                <div><label>IMAP host</label><input type="text" name="host" value="127.0.0.1" required></div>
+                <div><label>Port</label><input type="number" name="port" value="1143" required></div>
+            </div>
+            <div class="row">
+                <div><label>Username</label><input type="text" name="username" placeholder="you@proton.me" required></div>
+                <div><label>Password</label><input type="password" name="password" required></div>
+            </div>
+            <div class="row">
+                <div><label>Security</label>
+                    <select name="security">
+                        <option value="starttls" selected>STARTTLS (Proton Bridge)</option>
+                        <option value="ssl">SSL/TLS (Gmail, Outlook)</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+                <div><label>Folders (comma-separated)</label><input type="text" name="folders" value="INBOX"></div>
+            </div>
+            <label><input type="checkbox" name="verify_cert" value="1"> Verify TLS certificate (uncheck for Proton Bridge)</label>
+            <input type="hidden" name="_token" value="{{ csrf_token('mailbox') }}">
+            <p style="display:flex; gap:.5rem; align-items:center">
+                <button type="button" id="mb-check" class="ghost">Check settings</button>
+                <button type="submit">Add mailbox</button>
+            </p>
+            <div id="mb-check-result" class="flash" style="display:none"></div>
+        </form>
+    </div>
+
+    <script>
+        (function () {
+            const form = document.getElementById('mb-form');
+            const btn = document.getElementById('mb-check');
+            const out = document.getElementById('mb-check-result');
+            btn.addEventListener('click', async function () {
+                const fd = new FormData(form);
+                btn.disabled = true;
+                const original = btn.textContent;
+                btn.textContent = 'Checking…';
+                out.style.display = 'none';
+                try {
+                    const resp = await fetch('{{ path('mailbox_check') }}', { method: 'POST', body: new URLSearchParams(fd) });
+                    const data = await resp.json();
+                    out.className = 'flash ' + (data.ok ? 'success' : 'error');
+                    let msg = data.message || '';
+                    if (data.ok && data.folders && data.folders.length) {
+                        msg += ' Folders: ' + data.folders.join(', ');
+                    }
+                    out.textContent = msg;
+                } catch (e) {
+                    out.className = 'flash error';
+                    out.textContent = 'Check failed: ' + e;
+                } finally {
+                    out.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = original;
+                }
+            });
+        })();
+    </script>
+{% endblock %}

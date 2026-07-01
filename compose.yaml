@@ -1,0 +1,131 @@
+name: hunch
+# Local dev stack: the Symfony app, Postgres (settings + conversations), and
+# Meilisearch (derived search index). Emails live on the app's filesystem.
+#   ANTHROPIC_API_KEY=... docker compose up --build
+#   then open http://localhost:8000  (register an account, add a mailbox, sync)
+services:
+    app:
+        build: .
+        # Lets the container reach a mail server (e.g. Proton Bridge) running on
+        # your host: use host "host.docker.internal" in the mailbox settings.
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        ports:
+            - "8000:8000"
+        environment:
+            APP_ENV: dev
+            APP_DEBUG: "1"
+            APP_SECRET: dev_secret_change_me
+            DATABASE_URL: "postgresql://app:app@db:5432/app?serverVersion=16&charset=utf8"
+            MEILI_URL: http://meili:7700
+            MEILI_INDEX: hunch
+            EMBED_MODEL: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+            MESSENGER_TRANSPORT_DSN: doctrine://default
+            MERCURE_URL: http://mercure/.well-known/mercure
+            MERCURE_PUBLIC_URL: http://localhost:1337/.well-known/mercure
+            MERCURE_JWT_SECRET: '!ChangeThisMercureHubJWTSecretKey!'
+            # No global ANTHROPIC_API_KEY: each user sets their own in Settings.
+        volumes:
+            - ./src:/app/src
+            - ./config:/app/config
+            - ./templates:/app/templates
+            - maildir:/app/var/maildir
+        depends_on:
+            db:
+                condition: service_healthy
+            meili:
+                condition: service_healthy
+
+    # Search worker: runs the Claude agent loop and publishes results to Mercure.
+    # Fast jobs — kept separate so a long sync can't block interactive searches.
+    worker:
+        build: .
+        # Auto-restart so a transient crash (or the --time-limit recycle) brings
+        # the consumer back without manual intervention.
+        restart: unless-stopped
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        command: php bin/console messenger:consume search -v --time-limit=3600
+        environment: &worker_env
+            APP_ENV: dev
+            APP_SECRET: dev_secret_change_me
+            DATABASE_URL: "postgresql://app:app@db:5432/app?serverVersion=16&charset=utf8"
+            MEILI_URL: http://meili:7700
+            MEILI_INDEX: hunch
+            EMBED_MODEL: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+            MESSENGER_TRANSPORT_DSN: doctrine://default
+            MERCURE_URL: http://mercure/.well-known/mercure
+            MERCURE_PUBLIC_URL: http://localhost:1337/.well-known/mercure
+            MERCURE_JWT_SECRET: '!ChangeThisMercureHubJWTSecretKey!'
+        volumes: &worker_vols
+            - ./src:/app/src
+            - ./config:/app/config
+            - maildir:/app/var/maildir
+        depends_on: &worker_deps
+            db:
+                condition: service_healthy
+            meili:
+                condition: service_healthy
+
+    # Sync worker: long-running IMAP fetch + on-device indexing, isolated.
+    sync-worker:
+        build: .
+        # A long sync survives crashes: the message is unacked on crash and the
+        # per-batch UID cursor means the restarted worker resumes, not restarts.
+        restart: unless-stopped
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        command: php -d memory_limit=512M bin/console messenger:consume sync -v --time-limit=3600
+        environment: *worker_env
+        volumes: *worker_vols
+        depends_on: *worker_deps
+
+    # Real-time push hub: the worker publishes search progress/results here and
+    # the browser subscribes over SSE (no held HTTP request, no full reload).
+    mercure:
+        image: dunglas/mercure
+        environment:
+            SERVER_NAME: ":80"
+            MERCURE_PUBLISHER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
+            MERCURE_SUBSCRIBER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
+            # Dev: allow the app origin and let the browser subscribe without a
+            # token (conversation topics are unguessable UUIDs).
+            MERCURE_EXTRA_DIRECTIVES: |
+                cors_origins http://localhost:8000 http://127.0.0.1:8000
+                anonymous
+        ports:
+            - "1337:80"
+
+    db:
+        image: postgres:16
+        environment:
+            POSTGRES_USER: app
+            POSTGRES_PASSWORD: app
+            POSTGRES_DB: app
+        volumes:
+            - db-data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U app"]
+            interval: 3s
+            timeout: 3s
+            retries: 20
+
+    meili:
+        image: getmeili/meilisearch:v1.13
+        environment:
+            MEILI_NO_ANALYTICS: "true"
+            MEILI_ENV: development
+        ports:
+            - "7700:7700"
+        volumes:
+            - meili-data:/meili_data
+        healthcheck:
+            test: ["CMD", "curl", "-fsS", "http://localhost:7700/health"]
+            interval: 3s
+            timeout: 3s
+            retries: 20
+
+volumes:
+    db-data:
+    meili-data:
+    maildir:

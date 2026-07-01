@@ -1,0 +1,96 @@
+# Upsun deployment — Meilisearch runs as its own application.
+#
+# Meilisearch isn't a managed Upsun service, so we run it as a second app
+# ("search"): a lean container that downloads the binary at build time and runs
+# it as its web process on the internal network. The PHP app reaches it via an
+# app-to-app relationship (no public route for "search").
+#
+# ⚠️ Memory: Meilisearch's on-device HuggingFace embedder loads a ~400MB model
+# into RAM and embeds on CPU. Give the "search" app enough memory (its own
+# resources/plan), or point it at external Meilisearch and drop this app.
+#
+# Set a shared secret once (used by both apps):
+#   upsun variable:create --level project --name env:MEILI_MASTER_KEY --value "$(openssl rand -hex 24)" --sensitive true
+
+applications:
+    app:
+        source:
+            root: "/"
+        type: "php:8.3"
+        runtime:
+            extensions:
+                - iconv
+                - sodium
+        build:
+            flavor: composer
+        # Internal connections. App\Platform (called from public/index.php and
+        # bin/console) decodes these into MEILI_URL and DATABASE_URL at runtime.
+        relationships:
+            meilisearch: "search:http"
+            database: "db:postgresql"
+        hooks:
+            deploy: |
+                set -eu
+                php bin/console doctrine:schema:update --force --no-interaction
+                php bin/console cache:clear --no-warmup
+        # Background worker: processes mailbox syncs off the request path.
+        workers:
+            sync:
+                commands:
+                    start: php -d memory_limit=512M bin/console messenger:consume async --time-limit=3600
+        mounts:
+            "/var":
+                source: storage
+                source_path: var
+        web:
+            locations:
+                "/":
+                    root: "public"
+                    passthru: "/index.php"
+        # Incremental IMAP sync every 30 min (first run downloads the embed model).
+        crons:
+            sync:
+                spec: "*/30 * * * *"
+                commands:
+                    start: "php bin/console hunch:sync"
+
+    search:
+        source:
+            root: "/"
+        type: "php:8.3"     # any runtime; we only run a binary here
+        build:
+            flavor: none      # no dependency manager — just download Meilisearch
+        hooks:
+            build: |
+                set -eu
+                mkdir -p bin
+                curl -fsSL -o bin/meilisearch \
+                    https://github.com/meilisearch/meilisearch/releases/latest/download/meilisearch-linux-amd64
+                chmod +x bin/meilisearch
+        mounts:
+            "/data":
+                source: storage
+                source_path: data
+        web:
+            # Meilisearch is a plain TCP server, not a PHP/FPM app.
+            upstream:
+                socket_family: tcp
+            commands:
+                start: |
+                    exec ./bin/meilisearch --db-path "$PWD/data" --http-addr "127.0.0.1:$PORT" \
+                        --no-analytics ${MEILI_MASTER_KEY:+--master-key "$MEILI_MASTER_KEY"}
+
+services:
+    # Settings (users, mailboxes) + AI conversations. Emails stay on the app's
+    # filesystem (the /var mount), not in Postgres.
+    db:
+        type: postgresql:16
+
+# Only the PHP app is public; "search" stays internal (reached via relationship).
+routes:
+    "https://{default}/":
+        type: upstream
+        upstream: "app:http"
+    "https://www.{default}/":
+        type: redirect
+        to: "https://{default}/"

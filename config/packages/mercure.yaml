@@ -1,0 +1,11 @@
+mercure:
+    hubs:
+        default:
+            # Internal URL the PHP app/worker POST updates to.
+            url: '%env(MERCURE_URL)%'
+            # Public URL the browser subscribes to (EventSource).
+            public_url: '%env(MERCURE_PUBLIC_URL)%'
+            jwt:
+                secret: '%env(MERCURE_JWT_SECRET)%'
+                publish: ['*']
+                subscribe: ['*']

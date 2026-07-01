@@ -1,0 +1,13 @@
+framework:
+    secret: '%env(APP_SECRET)%'
+    http_method_override: false
+    handle_all_throwables: true
+
+    # MessageBag (the conversation history for the drill-down) lives in the session.
+    session:
+        handler_id: null
+        cookie_secure: auto
+        cookie_samesite: lax
+
+    php_errors:
+        log: true

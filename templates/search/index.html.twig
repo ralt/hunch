@@ -1,0 +1,190 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>Hunch <span class="dim">— ask for the email you half-remember</span></h1>
+
+    {% if app.user.mailboxes is empty %}
+        <div class="card">
+            <h3>No mailboxes yet</h3>
+            <p class="dim">There's nothing to search until you connect an email account.</p>
+            <p><a href="{{ path('mailboxes') }}">Add a mailbox →</a></p>
+        </div>
+    {% else %}
+        <div id="chat"
+             data-mercure-url="{{ mercurePublicUrl }}"
+             data-topic="{{ topic }}"
+             data-conversation-id="{{ conversation ? conversation.id : '' }}"
+             data-post-url="{{ path('search') }}"
+             data-email-url="{{ path('email_view', {id: '0000000000000000000000000000000000000000'}) }}">
+
+            <div id="messages">
+                {% for m in (conversation ? conversation.messages : []) %}
+                    <div class="bubble {{ m.role.value }}">{{ m.content }}</div>
+                {% endfor %}
+            </div>
+
+            <div id="status" class="dim" style="display:none"></div>
+
+            <form id="chat-form" class="search" autocomplete="off">
+                <input id="chat-input" type="text" name="message" autofocus
+                       placeholder="{{ conversation ? 'reply…' : 'e.g. that document the bank sent me about my mortgage' }}">
+                <button type="submit">Send</button>
+            </form>
+            {% if conversation %}<a class="dim" href="{{ path('home') }}">↺ start a new search</a>{% endif %}
+        </div>
+
+        <div id="email-modal" class="modal"><div class="modal-card">
+            <button id="email-close" class="ghost" style="float:right">✕ close</button>
+            <div id="email-content"></div>
+        </div></div>
+    {% endif %}
+
+    {% if recent %}
+        <h3 class="dim" style="margin-top:2rem">Recent searches</h3>
+        <div class="recent">
+            {% for c in recent %}<a href="{{ path('home', {conversation: c.id}) }}">{{ c.title|default('(untitled)') }}</a>{% endfor %}
+        </div>
+    {% endif %}
+
+    <style>
+        #status{padding:.4rem .2rem}
+        .results{margin:.5rem 0}
+        .card.result{cursor:pointer;transition:.15s}
+        .card.result:hover{border-color:var(--accent);box-shadow:0 4px 16px var(--glow,rgba(181,85,45,.1))}
+        .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow:auto}
+        .modal.open{display:flex}
+        .modal-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1.4rem;max-width:760px;width:100%}
+        .email-doc{border-top:1px solid var(--line);padding-top:1rem;margin-top:1rem}
+        .email-doc:first-child{border-top:0;margin-top:0;padding-top:0}
+        .email-body{white-space:pre-wrap;word-wrap:break-word;font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:.8rem;max-height:50vh;overflow:auto}
+    </style>
+
+    {% if app.user.mailboxes is not empty %}
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <script>
+    (function () {
+        const chat = document.getElementById('chat');
+        const messages = document.getElementById('messages');
+        const form = document.getElementById('chat-form');
+        const input = document.getElementById('chat-input');
+        const statusEl = document.getElementById('status');
+        const modal = document.getElementById('email-modal');
+        const emailContent = document.getElementById('email-content');
+
+        const mercureUrl = chat.dataset.mercureUrl;
+        const postUrl = chat.dataset.postUrl;
+        const emailTmpl = chat.dataset.emailUrl; // has a placeholder id we swap
+        const placeholderId = '0000000000000000000000000000000000000000';
+        let conversationId = chat.dataset.conversationId || null;
+        let topic = chat.dataset.topic || null;
+        let es = null;
+
+        const md = (t) => (window.marked && window.DOMPurify)
+            ? DOMPurify.sanitize(marked.parse(t || '')) : (t || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+        // Re-render server-sent assistant bubbles as markdown.
+        messages.querySelectorAll('.bubble.assistant').forEach(b => { b.innerHTML = md(b.textContent); });
+        scrollDown();
+
+        function scrollDown() { window.scrollTo(0, document.body.scrollHeight); }
+
+        function addBubble(role, text, asMarkdown) {
+            const d = document.createElement('div');
+            d.className = 'bubble ' + role;
+            if (asMarkdown) d.innerHTML = md(text); else d.textContent = text;
+            messages.appendChild(d); scrollDown(); return d;
+        }
+
+        function openMercure(t) {
+            if (!t || !mercureUrl || es) return;
+            const u = new URL(mercureUrl);
+            u.searchParams.append('topic', t);
+            es = new EventSource(u.toString());
+            es.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch (_) {} };
+        }
+
+        function handle(p) {
+            if (p.type === 'status') { statusEl.textContent = p.text; statusEl.style.display = 'block'; }
+            else if (p.type === 'assistant') { statusEl.style.display = 'none'; addBubble('assistant', p.text, true); }
+            else if (p.type === 'results') { renderResults(p.results || []); }
+            else if (p.type === 'done') { statusEl.style.display = 'none'; input.disabled = false; input.focus(); }
+        }
+
+        function renderResults(results) {
+            if (!results.length) return;
+            const wrap = document.createElement('div'); wrap.className = 'results';
+            if (results.length > 1) {
+                const all = document.createElement('button'); all.className = 'ghost';
+                all.textContent = 'Open all ' + results.length;
+                all.onclick = () => openEmails(results.map(r => r.id));
+                wrap.appendChild(all);
+            }
+            results.forEach(r => {
+                const c = document.createElement('div'); c.className = 'card result';
+                const h3 = document.createElement('h3'); h3.textContent = r.subject || '(no subject)';
+                const meta = document.createElement('div'); meta.className = 'meta';
+                meta.textContent = (r.from || '') + (r.date ? ' · ' + r.date : '');
+                c.append(h3, meta);
+                if (r.reason) { const re = document.createElement('div'); re.className = 'reason'; re.textContent = '→ ' + r.reason; c.appendChild(re); }
+                c.onclick = () => openEmails([r.id]);
+                wrap.appendChild(c);
+            });
+            messages.appendChild(wrap); scrollDown();
+        }
+
+        async function openEmails(ids) {
+            modal.classList.add('open');
+            emailContent.innerHTML = '';
+            for (const id of ids) {
+                if (!id) continue;
+                const doc = document.createElement('div'); doc.className = 'email-doc';
+                doc.innerHTML = '<p class="dim">Loading…</p>';
+                emailContent.appendChild(doc);
+                try {
+                    const res = await fetch(emailTmpl.replace(placeholderId, id));
+                    if (!res.ok) { doc.innerHTML = '<p class="dim">Could not load this email.</p>'; continue; }
+                    const d = await res.json();
+                    doc.innerHTML = '';
+                    const h2 = document.createElement('h2'); h2.textContent = d.subject || '(no subject)';
+                    const meta = document.createElement('div'); meta.className = 'meta';
+                    meta.textContent = (d.from || '') + (d.date ? ' · ' + d.date.substring(0, 10) : '');
+                    const body = document.createElement('div'); body.className = 'email-body'; body.textContent = d.body || '(no text body)';
+                    doc.append(h2, meta, body);
+                } catch (_) { doc.innerHTML = '<p class="dim">Could not load this email.</p>'; }
+            }
+        }
+        document.getElementById('email-close').onclick = () => modal.classList.remove('open');
+        modal.onclick = (e) => { if (e.target === modal) modal.classList.remove('open'); };
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = input.value.trim(); if (!text) return;
+            addBubble('user', text, false);
+            input.value = ''; input.disabled = true;
+            statusEl.textContent = 'Sending…'; statusEl.style.display = 'block';
+            try {
+                const res = await fetch(postUrl, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, conversation: conversationId }),
+                });
+                const d = await res.json();
+                if (!res.ok) {
+                    statusEl.style.display = 'none'; input.disabled = false;
+                    addBubble('assistant', d.error || 'Something went wrong.', false);
+                    if (d.redirect) setTimeout(() => { window.location = d.redirect; }, 1200);
+                    return;
+                }
+                conversationId = d.conversationId;
+                if (!topic) { topic = d.topic; openMercure(topic); }
+            } catch (_) {
+                statusEl.style.display = 'none'; input.disabled = false;
+                addBubble('assistant', 'Network error — please retry.', false);
+            }
+        });
+
+        if (topic) openMercure(topic); // continuing an existing conversation
+    })();
+    </script>
+    {% endif %}
+{% endblock %}

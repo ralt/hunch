@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <h1>Settings</h1>
+
+    <div class="card">
+        <h3>Anthropic API key</h3>
+        <p class="dim">
+            Your own key powers the conversational search. It's stored encrypted at rest
+            and used only for your searches.
+            {% if hasKey %}<br><strong>A key is currently set.</strong> Submit a new one to replace it, or leave blank to clear.{% endif %}
+        </p>
+        <form method="post" action="{{ path('settings_anthropic_key') }}">
+            <label>API key</label>
+            <input type="password" name="anthropic_key" placeholder="sk-ant-..." autocomplete="off">
+            <input type="hidden" name="_token" value="{{ csrf_token('settings') }}">
+            <p><button type="submit">Save</button></p>
+        </form>
+    </div>
+{% endblock %}

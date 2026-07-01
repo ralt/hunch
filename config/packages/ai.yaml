@@ -1,0 +1,5 @@
+# The Anthropic platform + agent are NOT configured here: each user brings their
+# own API key, so the agent is built per request from the user's stored key —
+# see App\Service\AgentFactory. (A single static api_key in config can't be
+# per-user.) The Symfony AI *components* are still used; only the bundle's
+# config-driven agent is intentionally omitted.

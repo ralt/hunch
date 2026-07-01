@@ -1,0 +1,9 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div class="panel">
+        <h1>Activation link invalid</h1>
+        <p class="dim">This activation link is unknown or has already been used. Ask an administrator for a new invitation.</p>
+        <p><a href="{{ path('login') }}">Back to login</a></p>
+    </div>
+{% endblock %}

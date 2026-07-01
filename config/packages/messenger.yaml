@@ -1,0 +1,12 @@
+framework:
+    messenger:
+        failure_transport: failed
+        transports:
+            # Two Postgres-backed queues on separate workers so a long-running
+            # mailbox sync never blocks interactive searches.
+            search: '%env(MESSENGER_TRANSPORT_DSN)%?queue_name=search'
+            sync: '%env(MESSENGER_TRANSPORT_DSN)%?queue_name=sync'
+            failed: 'doctrine://default?queue_name=failed'
+        routing:
+            App\Message\SearchMessage: search
+            App\Message\SyncMailboxMessage: sync
