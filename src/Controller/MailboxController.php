@@ -73,9 +73,13 @@ final class MailboxController extends AbstractController
     }
 
     #[Route('/{id}/sync', name: 'mailbox_sync', methods: ['POST'])]
-    public function sync(string $id, Request $request, MailboxRepository $repo, MessageBusInterface $bus): Response
+    public function sync(string $id, Request $request, MailboxRepository $repo, MessageBusInterface $bus, EntityManagerInterface $em): Response
     {
         $mb = $this->ownedOr404($id, $repo, $request);
+        // Clear any previous failure and mark it in-flight, so the page stops
+        // showing a stale error the moment the user retries.
+        $mb->setLastError(null)->setSyncStatus('syncing');
+        $em->flush();
         // Syncing is long-running (IMAP + on-device embedding) — hand it to a
         // background worker and return immediately.
         $bus->dispatch(new SyncMailboxMessage((string) $mb->getId()));
