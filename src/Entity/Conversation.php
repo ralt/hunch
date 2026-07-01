@@ -27,6 +27,25 @@ class Conversation
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
+    /**
+     * Candidate registry for this conversation: number => hit metadata. Kept
+     * stable across turns so a reference like "#7" resolves even many messages
+     * later (the model replays numbers from earlier assistant text).
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    #[ORM\Column(type: 'json')]
+    private array $candidates = [];
+
+    /**
+     * The emails last presented to the user (id + reason), so result cards can
+     * be re-rendered when the conversation is reopened.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    #[ORM\Column(type: 'json')]
+    private array $presentedResults = [];
+
     /** @var Collection<int, ConversationMessage> */
     #[ORM\OneToMany(targetEntity: ConversationMessage::class, mappedBy: 'conversation', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['createdAt' => 'ASC'])]
@@ -71,6 +90,34 @@ class Conversation
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function getCandidates(): array
+    {
+        return $this->candidates;
+    }
+
+    /** @param array<int, array<string, mixed>> $candidates */
+    public function setCandidates(array $candidates): static
+    {
+        $this->candidates = $candidates;
+
+        return $this;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function getPresentedResults(): array
+    {
+        return $this->presentedResults;
+    }
+
+    /** @param array<int, array<string, mixed>> $results */
+    public function setPresentedResults(array $results): static
+    {
+        $this->presentedResults = $results;
+
+        return $this;
     }
 
     /** @return Collection<int, ConversationMessage> */

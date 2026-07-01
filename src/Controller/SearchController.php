@@ -9,6 +9,7 @@ use App\Enum\MessageRole;
 use App\Message\SearchMessage;
 use App\MessageHandler\SearchHandler;
 use App\Repository\ConversationRepository;
+use App\Service\ResultCollector;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -44,6 +45,8 @@ final class SearchController extends AbstractController
 
         return $this->render('search/index.html.twig', [
             'conversation' => $conversation,
+            'presentedResults' => $conversation ? $conversation->getPresentedResults() : [],
+            'candidates' => $conversation ? ResultCollector::rank($conversation->getCandidates()) : [],
             'recent' => $this->conversations->recentForUser($user),
             'mercurePublicUrl' => $this->mercurePublicUrl,
             'topic' => $conversation ? SearchHandler::topic((string) $conversation->getId()) : '',

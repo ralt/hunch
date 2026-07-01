@@ -96,6 +96,8 @@ final class MailIndex
             'attributesToRetrieve' => ['id', 'userId', 'mailboxId', 'folder', 'uid', 'dateISO', 'dateUnix', 'from', 'fromName', 'to', 'subject'],
             'attributesToCrop' => ['body'],
             'cropLength' => 50,
+            // Surface the 0..1 relevance score so the UI can rank/re-order live.
+            'showRankingScore' => true,
         ];
         if ($filters) {
             $params['filter'] = implode(' AND ', $filters);

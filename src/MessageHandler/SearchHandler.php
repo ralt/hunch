@@ -65,8 +65,11 @@ final class SearchHandler
             return;
         }
 
-        $this->collector->reset();
+        // Seed the candidate registry from the conversation so numbers stay
+        // stable across turns (the model refers to "#7" from earlier messages).
+        $this->collector->seed($conversation->getCandidates());
         $this->searchContext->userId = (string) $user->getId();
+        $this->searchContext->topic = $topic; // lets the search tool stream live
 
         // System prompt + full prior conversation (the new user message is the last one).
         $bag = new MessageBag(Message::forSystem(
@@ -88,9 +91,6 @@ final class SearchHandler
             return;
         }
 
-        $this->saveAssistant($conversation, $assistant);
-        $this->publish($topic, ['type' => 'assistant', 'text' => $assistant]);
-
         $results = [];
         foreach ($this->collector->results() as $r) {
             $h = $r['hit'];
@@ -102,7 +102,25 @@ final class SearchHandler
                 'reason' => (string) $r['reason'],
             ];
         }
+
+        // Persist the (now conversation-wide) candidate registry and the emails
+        // presented this turn, so numbers keep resolving and cards survive reload.
+        $conversation->setCandidates($this->collector->candidates());
         if ($results) {
+            $conversation->setPresentedResults($results);
+        }
+        $this->saveAssistant($conversation, $assistant);
+
+        // Final authoritative ranked candidate set travels with the reply, so
+        // "#12" references linkify and the results pane matches even if a
+        // mid-search live update was missed.
+        $this->publish($topic, [
+            'type' => 'assistant',
+            'text' => $assistant,
+            'candidates' => $this->collector->rankedList(),
+        ]);
+        if ($results) {
+            // Mark which candidates the agent explicitly chose to present.
             $this->publish($topic, ['type' => 'results', 'results' => $results]);
         }
         $this->publish($topic, ['type' => 'done']);

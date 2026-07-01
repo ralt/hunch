@@ -10,4 +10,7 @@ namespace App\Service;
 final class SearchContext
 {
     public ?string $userId = null;
+
+    /** Mercure topic for the current conversation, so tools can push live updates. */
+    public ?string $topic = null;
 }

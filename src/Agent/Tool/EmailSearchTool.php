@@ -6,6 +6,8 @@ use App\Service\MailIndex;
 use App\Service\ResultCollector;
 use App\Service\SearchContext;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
+use Symfony\Component\Mercure\HubInterface;
+use Symfony\Component\Mercure\Update;
 
 /**
  * The tools Claude drives during the conversational search. Two tools, one class.
@@ -26,6 +28,7 @@ final class EmailSearchTool
         private readonly MailIndex $index,
         private readonly ResultCollector $collector,
         private readonly SearchContext $context,
+        private readonly HubInterface $hub,
     ) {
     }
 
@@ -55,7 +58,28 @@ final class EmailSearchTool
             ];
         }
 
+        // Push the updated, relevance-ranked candidate set to the browser so the
+        // results pane fills in and re-orders live as the agent searches.
+        $this->publishCandidates();
+
         return $out ?: [['note' => 'no matches; try different terms or a broader query']];
+    }
+
+    /** Stream the current ranked candidates to the conversation's Mercure topic. */
+    private function publishCandidates(): void
+    {
+        $topic = $this->context->topic;
+        if (!$topic) {
+            return;
+        }
+        try {
+            $this->hub->publish(new Update($topic, json_encode([
+                'type' => 'candidates',
+                'candidates' => $this->collector->rankedList(),
+            ], \JSON_THROW_ON_ERROR)));
+        } catch (\Throwable) {
+            // Live updates are best-effort; the final payload still arrives.
+        }
     }
 
     /**
@@ -63,8 +87,16 @@ final class EmailSearchTool
      */
     public function present(array $results): string
     {
-        $this->collector->present($results);
+        $r = $this->collector->present($results);
 
-        return 'Presented '.\count($results).' result(s) to the user.';
+        if ($r['unknown']) {
+            return \sprintf(
+                'Presented %d result(s). Numbers %s matched no candidate — run search_emails again and present from the fresh results.',
+                $r['presented'],
+                implode(', ', array_map(static fn (int $n): string => '#'.$n, $r['unknown'])),
+            );
+        }
+
+        return 'Presented '.$r['presented'].' result(s) to the user.';
     }
 }
