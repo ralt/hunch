@@ -43,6 +43,10 @@
         .section{padding:3.5rem 0;border-top:1px solid var(--border)}
         .section h2{font-size:1.9rem;text-align:center;margin-bottom:.75rem;letter-spacing:-.02em}
         .section .lead{text-align:center;color:var(--text-muted);max-width:640px;margin:0 auto 2.5rem}
+        .shots{display:grid;gap:2rem}
+        figure{margin:0}
+        .shot{width:100%;height:auto;border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 30px var(--glow);display:block}
+        .shot-cap{color:var(--text-muted);font-size:.92rem;margin-top:.6rem;text-align:center}
         .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem}
         .step{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.6rem;transition:.2s}
         .step:hover{border-color:var(--accent);box-shadow:0 6px 24px var(--glow)}
@@ -80,6 +84,20 @@
     </div>
 
     <div class="container">
+        <div class="section">
+            <h2>See it in action</h2>
+            <p class="lead">Vague in, the right email out — the conversation, live-ranked matches, and the email itself, side by side.</p>
+            <div class="shots">
+                <figure>
+                    <img class="shot" src="screenshot-lease.png" alt="Hunch resolving a vague search for a signed office lease: a conversation pane, live-ranked results with match scores, and the opened email side by side">
+                    <figcaption class="shot-cap">“the thing we signed for the new office, last spring?” → Hunch asks which document you meant and opens the countersigned lease.</figcaption>
+                </figure>
+                <figure>
+                    <img class="shot" src="screenshot-recipe.png" alt="The same three-pane workflow in dark mode, finding a newsletter recipe from a fuzzy description">
+                    <figcaption class="shot-cap">“a newsletter with a crispy chickpea recipe, a few weeks back?” → found and opened, in dark mode.</figcaption>
+                </figure>
+            </div>
+        </div>
         <div class="section">
             <h2>Search your inbox by a hunch</h2>
             <p class="lead">You rarely remember the words in an email — you remember the gist. Hunch is built for the gist.</p>

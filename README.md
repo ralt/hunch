@@ -6,6 +6,12 @@ You connect a mailbox, Hunch quietly indexes it, and then you just talk to it. T
 
 **It's not an email client.** It doesn't send mail, it doesn't manage folders, it won't replace Gmail or Thunderbird. The most it does with an email is **show it to you** — read-only. That's the whole product.
 
+![Hunch resolving a vague search for a signed office lease — a conversation pane, live-ranked results, and the opened email side by side](docs/screenshot-lease.png)
+
+*Ask vaguely; Hunch searches, ranks by relevance, asks a question when it's unsure, and opens the email beside the conversation. (Dark mode below.)*
+
+![The same workflow in dark mode, finding a newsletter recipe from a fuzzy description](docs/screenshot-recipe.png)
+
 ## Why you'd want it
 
 Search in most mail apps is a keyword lottery: you have to remember a word that's actually *in* the email. But you rarely remember the words — you remember the gist. Hunch is built for that gist.
