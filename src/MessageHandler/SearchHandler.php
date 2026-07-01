@@ -89,21 +89,32 @@ final class SearchHandler
             return;
         }
 
-        $results = [];
+        // The presented set = everything the agent formally presented via
+        // present_results, PLUS any email it referenced by number ("#12") in its
+        // reply. The model doesn't always call present_results, so treating every
+        // mentioned email as a pick keeps the results pane's "Picked by Hunch"
+        // grouping meaningful. Keyed by id to de-dupe.
+        $candidates = $this->collector->candidates();
+        $presented = [];
         foreach ($this->collector->results() as $r) {
-            $h = $r['hit'];
-            $results[] = [
-                'id' => (string) ($h['id'] ?? ''),
-                'subject' => (string) ($h['subject'] ?? '(no subject)'),
-                'from' => (string) ($h['from'] ?? ''),
-                'date' => substr((string) ($h['dateISO'] ?? ''), 0, 10),
-                'reason' => (string) $r['reason'],
-            ];
+            $id = (string) ($r['hit']['id'] ?? '');
+            if ('' !== $id) {
+                $presented[$id] = self::presentedRow($r['hit'], (string) $r['reason']);
+            }
         }
+        if (preg_match_all('/#(\d+)/', $assistant, $m)) {
+            foreach ($m[1] as $num) {
+                $h = $candidates[(int) $num] ?? null;
+                if (\is_array($h) && '' !== ($id = (string) ($h['id'] ?? '')) && !isset($presented[$id])) {
+                    $presented[$id] = self::presentedRow($h, '');
+                }
+            }
+        }
+        $results = array_values($presented);
 
-        // Persist the (now conversation-wide) candidate registry and the emails
-        // presented this turn, so numbers keep resolving and cards survive reload.
-        $conversation->setCandidates($this->collector->candidates());
+        // Persist the (now conversation-wide) candidate registry and the presented
+        // emails, so numbers keep resolving and the picks survive a reload.
+        $conversation->setCandidates($candidates);
         if ($results) {
             $conversation->setPresentedResults($results);
         }
@@ -118,10 +129,26 @@ final class SearchHandler
             'candidates' => $this->collector->rankedList(),
         ]);
         if ($results) {
-            // Mark which candidates the agent explicitly chose to present.
+            // Mark which candidates are presented (so they group at the top).
             $this->publish($topic, ['type' => 'results', 'results' => $results]);
         }
         $this->publish($topic, ['type' => 'done']);
+    }
+
+    /**
+     * @param array<string,mixed> $h
+     *
+     * @return array<string,mixed>
+     */
+    private static function presentedRow(array $h, string $reason): array
+    {
+        return [
+            'id' => (string) ($h['id'] ?? ''),
+            'subject' => (string) ($h['subject'] ?? '(no subject)'),
+            'from' => (string) ($h['from'] ?? ''),
+            'date' => substr((string) ($h['dateISO'] ?? ''), 0, 10),
+            'reason' => $reason,
+        ];
     }
 
     private function finish(Conversation $c, string $topic, string $assistant): void
