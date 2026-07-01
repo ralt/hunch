@@ -3,10 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <title>{% block title %}Hunch — semantic email search{% endblock %}</title>
+    {# Inlined as a data URI: the dev server (php -S) routes /favicon.svg through
+       Symfony and returns HTML, so a linked static file never renders. #}
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%23b5552d%22/><circle cx=%2214%22 cy=%2214%22 r=%226.5%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%222.4%22/><line x1=%2218.8%22 y1=%2218.8%22 x2=%2224.5%22 y2=%2224.5%22 stroke=%22%23fff%22 stroke-width=%222.8%22 stroke-linecap=%22round%22/><path d=%22M14 9.6l1.15 2.85L18 13.6l-2.85 1.15L14 17.6l-1.15-2.85L10 13.6l2.85-1.15z%22 fill=%22%23fff%22/></svg>">
+    <title>{% block title %}Hunch — search your email by a hunch{% endblock %}</title>
+    {# Set the theme before first paint to avoid a flash of the wrong mode. #}
+    <script>
+    (function(){
+        var root=document.documentElement;
+        var stored=localStorage.getItem('theme');
+        var prefersDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+        root.setAttribute('data-theme', (stored==='dark'||((!stored)&&prefersDark)) ? 'dark' : 'light');
+    })();
+    </script>
     <style>
-        :root { --bg:#f4f1ea; --fg:#2b2b2b; --muted:#8a8275; --accent:#b5552d; --card:#fff; --line:#ece6d8; }
+        :root {
+            --bg:#f4f1ea; --fg:#2b2b2b; --muted:#8a8275; --accent:#b5552d;
+            --card:#fff; --line:#ece6d8; --user:#e9e3d6; --input-border:#ddd6c9;
+            --glow:rgba(181,85,45,.1);
+            --flash-error-bg:#f7e0d8; --flash-error-fg:#7a2e12;
+            --flash-success-bg:#e3efe0; --flash-success-fg:#2c5a2c;
+        }
+        /* Dark palette — applied when the OS prefers dark (unless the user forced
+           light) or when explicitly toggled to dark. */
+        @media(prefers-color-scheme:dark){
+            :root:not([data-theme="light"]){
+                --bg:#1b1917; --fg:#ece7dd; --muted:#a29a8c; --accent:#e08a55;
+                --card:#262320; --line:#39332c; --user:#332e27; --input-border:#4a4239;
+                --glow:rgba(224,138,85,.14);
+                --flash-error-bg:#3a201a; --flash-error-fg:#f0b8a4;
+                --flash-success-bg:#1e2a1c; --flash-success-fg:#a9d5a2;
+            }
+        }
+        :root[data-theme="dark"]{
+            --bg:#1b1917; --fg:#ece7dd; --muted:#a29a8c; --accent:#e08a55;
+            --card:#262320; --line:#39332c; --user:#332e27; --input-border:#4a4239;
+            --glow:rgba(224,138,85,.14);
+            --flash-error-bg:#3a201a; --flash-error-fg:#f0b8a4;
+            --flash-success-bg:#1e2a1c; --flash-success-fg:#a9d5a2;
+        }
         * { box-sizing: border-box; }
         body { margin:0; font:16px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
         a { color: var(--accent); }
@@ -19,27 +54,35 @@
         h1 .dim, .dim { color: var(--muted); font-weight:400; }
         form.search { display:flex; gap:.5rem; margin:1.25rem 0; }
         input[type=text], input[type=email], input[type=password], input[type=number], select {
-            padding:.6rem .8rem; border:1px solid #ddd6c9; border-radius:10px; font-size:1rem; background:var(--card); width:100%; }
+            padding:.6rem .8rem; border:1px solid var(--input-border); border-radius:10px; font-size:1rem; background:var(--card); color:var(--fg); width:100%; }
         form.search input { flex:1; }
         button { padding:.6rem 1.1rem; border:0; border-radius:10px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
         button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); }
         .bubble { padding:.7rem .95rem; border-radius:12px; margin:.5rem 0; max-width:85%; white-space:pre-wrap; }
-        .user { background:#e9e3d6; margin-left:auto; }
+        .user { background:var(--user); margin-left:auto; }
         .assistant { background:var(--card); border:1px solid var(--line); }
         .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:1rem; margin:.75rem 0; }
         .card h3 { margin:0 0 .25rem; font-size:1.05rem; }
         .meta { color:var(--muted); font-size:.85rem; }
         .reason { color:var(--accent); margin-top:.4rem; font-size:.92rem; }
         .flash { padding:.6rem .9rem; border-radius:10px; margin:.4rem 0; }
-        .flash.error { background:#f7e0d8; color:#7a2e12; }
-        .flash.success { background:#e3efe0; color:#2c5a2c; }
+        .flash.error { background:var(--flash-error-bg); color:var(--flash-error-fg); }
+        .flash.success { background:var(--flash-success-bg); color:var(--flash-success-fg); }
         .row { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
         label { font-size:.85rem; color:var(--muted); display:block; margin:.4rem 0 .15rem; }
         .panel { max-width:420px; margin:3rem auto; }
         .recent a { display:block; padding:.3rem 0; }
+
+        /* Theme toggle (a small switch in the nav). */
+        .theme-toggle { background:var(--card); border:1px solid var(--line); border-radius:20px; width:40px; height:22px; cursor:pointer; padding:2px; display:flex; align-items:center; flex-shrink:0; transition:border-color .2s; }
+        .theme-toggle:hover { border-color:var(--accent); }
+        .theme-toggle .knob { width:16px; height:16px; border-radius:50%; background:var(--accent); display:flex; align-items:center; justify-content:center; transition:transform .3s ease; }
+        .theme-toggle .knob svg { width:10px; height:10px; color:var(--card); }
+        .theme-toggle[aria-checked="true"] .knob { transform:translateX(18px); }
+        @media(prefers-reduced-motion:reduce){ .theme-toggle .knob { transition:none; } }
     </style>
 </head>
-<body>
+<body class="{% block bodyclass %}{% endblock %}">
     <nav>
         <span class="brand">Hunch</span>
         {% if app.user %}
@@ -54,6 +97,12 @@
             <span class="spacer"></span>
             <a href="{{ path('login') }}">Log in</a>
         {% endif %}
+        <button class="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode">
+            <span class="knob">
+                <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </span>
+        </button>
     </nav>
     <div class="wrap">
         {% for type, messages in app.flashes %}
@@ -63,5 +112,35 @@
         {% endfor %}
         {% block body %}{% endblock %}
     </div>
+
+    <script>
+    (function(){
+        var toggle=document.querySelector('.theme-toggle');
+        if(!toggle)return;
+        var root=document.documentElement;
+        var sun=toggle.querySelector('.icon-sun');
+        var moon=toggle.querySelector('.icon-moon');
+        var stored=localStorage.getItem('theme');
+        var prefersDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+        var dark=stored?stored==='dark':prefersDark;
+
+        function apply(d){
+            dark=d;
+            root.setAttribute('data-theme',d?'dark':'light');
+            toggle.setAttribute('aria-checked',String(d));
+            sun.style.display=d?'none':'block';
+            moon.style.display=d?'block':'none';
+        }
+        apply(dark);
+
+        toggle.addEventListener('click',function(){
+            apply(!dark);
+            localStorage.setItem('theme',dark?'dark':'light');
+        });
+        window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(e){
+            if(!localStorage.getItem('theme')){apply(e.matches)}
+        });
+    })();
+    </script>
 </body>
 </html>
