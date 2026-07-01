@@ -33,18 +33,21 @@ final class EmailSearchTool
     }
 
     /**
-     * @param string $query          What to search for; natural language, synonyms welcome
-     * @param string $from           Optional sender substring to bias toward (name or address)
-     * @param string $after          Optional earliest date, YYYY-MM-DD
-     * @param string $before         Optional latest date, YYYY-MM-DD
-     * @param float  $semantic_ratio 0 = keyword only, 1 = meaning only; default 0.5
+     * @param string $query  What to search for; natural language, synonyms welcome
+     * @param string $from   Optional sender substring to bias toward (name or address)
+     * @param string $after  Optional earliest date, YYYY-MM-DD
+     * @param string $before Optional latest date, YYYY-MM-DD
      *
      * @return array<int,array<string,mixed>>
      */
-    public function search(string $query, string $from = '', string $after = '', string $before = '', float $semantic_ratio = 0.5): array
+    public function search(string $query, string $from = '', string $after = '', string $before = ''): array
     {
         $userId = $this->context->userId ?? '';
-        $hits = $this->index->search($userId, $query, $from, $after, $before, $semantic_ratio);
+        // Balanced hybrid (keyword + semantic). Deliberately not model-tunable:
+        // the model steers relevance by reformulating the query, and exposing a
+        // float knob tripped the tool-arg type coercion (the model sends 0/1 as
+        // JSON ints, which the denormalizer rejects for a float parameter).
+        $hits = $this->index->search($userId, $query, $from, $after, $before, 0.5);
 
         $out = [];
         foreach ($hits as $h) {
