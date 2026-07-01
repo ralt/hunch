@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Service\AgentFactory;
 use App\Service\Crypto;
+use App\Service\SsrfGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -32,7 +33,7 @@ final class SettingsController extends AbstractController
     }
 
     #[Route('/ai', name: 'settings_ai', methods: ['POST'])]
-    public function setAi(Request $request, Crypto $crypto, EntityManagerInterface $em): Response
+    public function setAi(Request $request, Crypto $crypto, EntityManagerInterface $em, SsrfGuard $ssrf): Response
     {
         /** @var User $user */
         $user = $this->getUser();
@@ -49,9 +50,20 @@ final class SettingsController extends AbstractController
             return $this->redirectToRoute('settings');
         }
 
+        $baseUrl = trim((string) $request->request->get('base_url'));
+        if ('ollama' === $provider && '' !== $baseUrl) {
+            try {
+                $ssrf->assertAllowedUrl($baseUrl);
+            } catch (\RuntimeException $e) {
+                $this->addFlash('error', 'Ollama server URL rejected: '.$e->getMessage());
+
+                return $this->redirectToRoute('settings');
+            }
+        }
+
         $user->setAiProvider($provider);
         $user->setAiModel(trim((string) $request->request->get('model')));
-        $user->setAiBaseUrl(trim((string) $request->request->get('base_url')));
+        $user->setAiBaseUrl($baseUrl);
 
         // Blank key field keeps the stored one; a value replaces it; "__clear__" removes it.
         $key = trim((string) $request->request->get('api_key'));

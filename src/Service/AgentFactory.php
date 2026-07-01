@@ -60,6 +60,7 @@ final class AgentFactory
     public function __construct(
         private readonly EmailSearchTool $tool,
         private readonly Crypto $crypto,
+        private readonly SsrfGuard $ssrf,
     ) {
     }
 
@@ -76,13 +77,21 @@ final class AgentFactory
 
         $platform = match ($user->getAiProvider()) {
             'openai' => OpenAiFactory::createPlatform($key),
-            'ollama' => OllamaFactory::createPlatform($user->getAiBaseUrl() ?: self::OLLAMA_DEFAULT_URL),
+            'ollama' => $this->ollamaPlatform($user->getAiBaseUrl() ?: self::OLLAMA_DEFAULT_URL),
             default => AnthropicFactory::createPlatform($key, modelCatalog: $this->anthropicCatalog($model)),
         };
 
         $processor = new AgentProcessor(new Toolbox([$this->tool]));
 
         return new Agent($platform, $model, [$processor], [$processor]);
+    }
+
+    /** Guard the user-supplied Ollama URL against SSRF, then build the platform. */
+    private function ollamaPlatform(string $baseUrl): \Symfony\AI\Platform\Platform
+    {
+        $this->ssrf->assertAllowedUrl($baseUrl);
+
+        return OllamaFactory::createPlatform($baseUrl);
     }
 
     /**

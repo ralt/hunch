@@ -9,6 +9,7 @@ use App\Repository\MailboxRepository;
 use App\Service\Crypto;
 use App\Service\ImapTester;
 use App\Service\MailIndex;
+use App\Service\SsrfGuard;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -36,12 +37,20 @@ final class MailboxController extends AbstractController
     }
 
     #[Route('/new', name: 'mailbox_new', methods: ['POST'])]
-    public function new(Request $request, Crypto $crypto, EntityManagerInterface $em, MessageBusInterface $bus): Response
+    public function new(Request $request, Crypto $crypto, EntityManagerInterface $em, MessageBusInterface $bus, SsrfGuard $ssrf): Response
     {
         /** @var User $user */
         $user = $this->getUser();
         if (!$this->isCsrfTokenValid('mailbox', (string) $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid CSRF token.');
+
+            return $this->redirectToRoute('mailboxes');
+        }
+
+        try {
+            $ssrf->assertAllowedHost((string) $request->request->get('host'));
+        } catch (\RuntimeException $e) {
+            $this->addFlash('error', 'IMAP host rejected: '.$e->getMessage());
 
             return $this->redirectToRoute('mailboxes');
         }
@@ -90,10 +99,16 @@ final class MailboxController extends AbstractController
 
     /** AJAX: test IMAP settings before saving, so we know they'll work. */
     #[Route('/check', name: 'mailbox_check', methods: ['POST'])]
-    public function check(Request $request, ImapTester $tester): JsonResponse
+    public function check(Request $request, ImapTester $tester, SsrfGuard $ssrf): JsonResponse
     {
         if (!$this->isCsrfTokenValid('mailbox', (string) $request->request->get('_token'))) {
             return new JsonResponse(['ok' => false, 'message' => 'Invalid CSRF token.'], 400);
+        }
+
+        try {
+            $ssrf->assertAllowedHost((string) $request->request->get('host'));
+        } catch (\RuntimeException $e) {
+            return new JsonResponse(['ok' => false, 'message' => 'Host rejected: '.$e->getMessage()]);
         }
 
         $result = $tester->test(
