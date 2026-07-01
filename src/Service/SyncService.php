@@ -187,7 +187,22 @@ final class SyncService
             $raw = (string) $message->getRawBody();
         }
 
+        // Email bodies/headers aren't always clean UTF-8 (mis-declared charsets,
+        // truncated multibyte sequences). Force every string field to valid UTF-8
+        // so json_encode (sidecar) and Meilisearch's payload encoder never choke.
+        $doc = array_map(fn ($v) => \is_string($v) ? $this->utf8($v) : $v, $doc);
+
         return [$doc, $raw];
+    }
+
+    /** Force valid UTF-8, substituting any stray/invalid bytes. */
+    private function utf8(string $s): string
+    {
+        if ('' === $s || mb_check_encoding($s, 'UTF-8')) {
+            return $s;
+        }
+
+        return mb_convert_encoding($s, 'UTF-8', 'UTF-8');
     }
 
     /** Normalize webklex's Attribute|array|null address header to a list of Address objects. */
