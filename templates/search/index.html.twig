@@ -39,7 +39,6 @@
                         {% endif %}
                     </div>
                     <div class="win-foot">
-                        <div id="status" class="dim" style="display:none"></div>
                         <form id="chat-form" class="search" autocomplete="off">
                             <input id="chat-input" type="text" name="message" autofocus
                                    placeholder="{{ conversation ? 'reply…' : 'e.g. that document the bank sent me about my mortgage' }}">
@@ -109,6 +108,11 @@
         /* Messages */
         #messages .intro:only-child { }
         .bubble { padding:.7rem .95rem; border-radius:12px; margin:.5rem 0; max-width:92%; white-space:pre-wrap; }
+        /* "Thinking" indicator shown in the message list while a search runs. */
+        .bubble.thinking { display:flex; align-items:center; gap:.55rem; color:var(--muted); }
+        .spinner { width:15px; height:15px; flex:0 0 auto; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        @media(prefers-reduced-motion:reduce){ .spinner { animation-duration:2s; } }
         .email-doc h2 { font-size:1.15rem; margin:0 0 .3rem; }
         .email-body { white-space:pre-wrap; word-wrap:break-word; font:14px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;
                       margin-top:.8rem; }
@@ -125,7 +129,6 @@
         const messages = document.getElementById('messages');
         const form = document.getElementById('chat-form');
         const input = document.getElementById('chat-input');
-        const statusEl = document.getElementById('status');
         const winConversation = document.getElementById('win-conversation');
         const winResults = document.getElementById('win-results');
         const winEmail = document.getElementById('win-email');
@@ -203,6 +206,21 @@
         }
         function scrollMessages() { requestAnimationFrame(() => { messages.scrollTop = messages.scrollHeight; }); }
 
+        // A spinner bubble in the message list, so progress is visible right
+        // where you're looking (not just the small line above the input).
+        let thinkingEl = null;
+        function showThinking(text) {
+            if (!thinkingEl) {
+                thinkingEl = document.createElement('div');
+                thinkingEl.className = 'bubble assistant thinking';
+                thinkingEl.innerHTML = '<span class="spinner"></span><span class="thinking-text"></span>';
+                messages.appendChild(thinkingEl);
+            }
+            thinkingEl.querySelector('.thinking-text').textContent = text || 'Searching…';
+            scrollMessages();
+        }
+        function hideThinking() { if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; } }
+
         // --- Results pane (live-ranked) -------------------------------------
         function indexCandidates(list) {
             (list || []).forEach(c => { if (c.id) candidateIndex[c.n] = { id: c.id, subject: c.subject || '' }; });
@@ -271,11 +289,11 @@
             es.onmessage = (e) => { try { handle(JSON.parse(e.data)); } catch (_) {} };
         }
         function handle(p) {
-            if (p.type === 'status') { statusEl.textContent = p.text; statusEl.style.display = 'block'; }
+            if (p.type === 'status') { showThinking(p.text); }
             else if (p.type === 'candidates') { renderCandidates(p.candidates); }
-            else if (p.type === 'assistant') { statusEl.style.display = 'none'; renderCandidates(p.candidates); addBubble('assistant', p.text, true); }
+            else if (p.type === 'assistant') { hideThinking(); renderCandidates(p.candidates); addBubble('assistant', p.text, true); }
             else if (p.type === 'results') { markPicked(p.results); renderCandidates(); }
-            else if (p.type === 'done') { statusEl.style.display = 'none'; input.disabled = false; input.focus(); }
+            else if (p.type === 'done') { hideThinking(); input.disabled = false; input.focus(); }
         }
 
         // --- Compose ---------------------------------------------------------
@@ -285,7 +303,7 @@
             focusWindow(winConversation);
             addBubble('user', text, false);
             input.value = ''; input.disabled = true;
-            statusEl.textContent = 'Sending…'; statusEl.style.display = 'block';
+            showThinking('Sending…');
             try {
                 const res = await fetch(postUrl, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -293,7 +311,7 @@
                 });
                 const d = await res.json();
                 if (!res.ok) {
-                    statusEl.style.display = 'none'; input.disabled = false;
+                    hideThinking(); input.disabled = false;
                     addBubble('assistant', d.error || 'Something went wrong.', false);
                     if (d.redirect) setTimeout(() => { window.location = d.redirect; }, 1200);
                     return;
@@ -301,7 +319,7 @@
                 conversationId = d.conversationId;
                 if (!topic) { topic = d.topic; openMercure(topic); }
             } catch (_) {
-                statusEl.style.display = 'none'; input.disabled = false;
+                hideThinking(); input.disabled = false;
                 addBubble('assistant', 'Network error — please retry.', false);
             }
         });
