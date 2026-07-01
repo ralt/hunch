@@ -104,6 +104,8 @@
         .rr-bar { height:3px; border-radius:3px; background:var(--line); margin-top:.5rem; overflow:hidden; }
         .rr-bar i { display:block; height:100%; background:var(--accent); }
         .results-empty { color:var(--muted); font-size:.9rem; }
+        .results-group { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; font-weight:600; color:var(--muted); margin:.1rem 0 .55rem; }
+        .result-row + .results-group { margin-top:.6rem; }
 
         /* Messages */
         #messages .intro:only-child { }
@@ -234,20 +236,39 @@
             resultsCount.textContent = list.length ? '· ' + list.length : '';
             if (!list.length) { resultsList.innerHTML = '<div class="results-empty">No matches yet…</div>'; return; }
             resultsList.innerHTML = '';
-            list.forEach(c => {
-                const pct = Math.round((c.score || 0) * 100);
-                const row = document.createElement('div');
-                row.className = 'result-row' + (c.id === activeEmailId ? ' active' : '');
-                row.dataset.id = c.id;
-                const pick = pickedIds.has(c.id) ? '<span class="pick" title="Claude picked this">★ </span>' : '';
-                row.innerHTML =
-                    '<div class="rr-top"><span class="rr-subject">' + pick + esc(c.subject || '(no subject)') + '</span>'
-                    + '<span class="rr-score">' + pct + '%</span></div>'
-                    + '<div class="rr-meta">' + esc((c.from || '') + (c.date ? ' · ' + c.date : '')) + '</div>'
-                    + (c.snippet ? '<div class="rr-snippet">' + esc(c.snippet) + '</div>' : '')
-                    + '<div class="rr-bar"><i style="width:' + pct + '%"></i></div>';
-                resultsList.appendChild(row);
-            });
+
+            // The emails Hunch actually chose (present_results) are the answer, so
+            // pin them to the top — the rest of the list is everything it searched
+            // across the conversation, ranked by raw relevance, which mixes in
+            // candidates from broad reformulations.
+            const picked = list.filter(c => pickedIds.has(c.id));
+            const rest = list.filter(c => !pickedIds.has(c.id));
+            if (picked.length) {
+                resultsList.appendChild(groupLabel('Picked by Hunch'));
+                picked.forEach(c => resultsList.appendChild(resultRow(c)));
+                if (rest.length) resultsList.appendChild(groupLabel('Other matches it considered'));
+            }
+            rest.forEach(c => resultsList.appendChild(resultRow(c)));
+        }
+        function resultRow(c) {
+            const pct = Math.round((c.score || 0) * 100);
+            const row = document.createElement('div');
+            row.className = 'result-row' + (c.id === activeEmailId ? ' active' : '');
+            row.dataset.id = c.id;
+            const pick = pickedIds.has(c.id) ? '<span class="pick" title="Hunch picked this">★ </span>' : '';
+            row.innerHTML =
+                '<div class="rr-top"><span class="rr-subject">' + pick + esc(c.subject || '(no subject)') + '</span>'
+                + '<span class="rr-score">' + pct + '%</span></div>'
+                + '<div class="rr-meta">' + esc((c.from || '') + (c.date ? ' · ' + c.date : '')) + '</div>'
+                + (c.snippet ? '<div class="rr-snippet">' + esc(c.snippet) + '</div>' : '')
+                + '<div class="rr-bar"><i style="width:' + pct + '%"></i></div>';
+            return row;
+        }
+        function groupLabel(text) {
+            const el = document.createElement('div');
+            el.className = 'results-group';
+            el.textContent = text;
+            return el;
         }
         function esc(s) { return (s || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
         function markPicked(results) {
