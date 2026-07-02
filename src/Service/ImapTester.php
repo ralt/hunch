@@ -51,7 +51,9 @@ final class ImapTester
                 'folders' => \array_slice($names, 0, 25),
             ];
         } catch (\Throwable $e) {
-            return ['ok' => false, 'message' => 'Connection failed: '.$e->getMessage()];
+            // RootCause keeps the library's outer message ("connection failed: …"),
+            // so no hardcoded prefix — it would read "Connection failed: connection failed".
+            return ['ok' => false, 'message' => ucfirst(RootCause::message($e))];
         }
     }
 }

@@ -46,7 +46,7 @@ final class SyncService
 
             return $total;
         } catch (\Throwable $e) {
-            $mb->setSyncStatus('error')->setLastError($e->getMessage());
+            $mb->setSyncStatus('error')->setLastError(RootCause::message($e));
             $this->em->flush();
             throw $e;
         }
