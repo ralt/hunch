@@ -10,9 +10,15 @@ RUN apt-get update \
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
-COPY . /app
+# Vendor lives in its own layer, keyed on composer.json alone: editing src/
+# or config/ must not throw away — and re-download — every dependency, which
+# is what made each `--build` restart take minutes. Dist zips, not
+# --prefer-source git clones: same code, a fraction of the download time.
+COPY composer.json /app/
+RUN composer install --no-interaction --no-progress
 
-RUN composer install --no-interaction --no-progress --prefer-source \
+COPY . /app
+RUN composer dump-autoload --no-interaction \
     && mkdir -p var && chmod -R 0777 var
 
 EXPOSE 8000
