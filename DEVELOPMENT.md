@@ -16,6 +16,27 @@ Then, in the app:
 2. **Mailboxes** → add an IMAP account (use **"Check settings"** first) → it syncs in the background.
 3. **Search** → ask for an email in plain language.
 
+## Hybrid mode: app on the host, infra in Docker
+
+If your IMAP server only listens on the host's loopback (Proton Bridge binds
+`127.0.0.1:1143` and offers no way to listen wider), the containerized app can
+never reach it. Run the app and workers directly on the host instead, keeping
+Postgres/Meilisearch/Mercure in Docker:
+
+```bash
+# infra only — an override must publish Postgres (e.g. "127.0.0.1:5432:5432")
+docker compose up -d db meili mercure
+composer install                      # PHP >= 8.4 with intl/mbstring/zip/pdo_pgsql
+cp .env .env.local                    # defaults already point at 127.0.0.1
+php bin/console doctrine:schema:update --force
+php -S 127.0.0.1:8000 -t public public/index.php   # + the two messenger:consume workers
+```
+
+Mind two migration gotchas: keep the same `APP_SECRET` (it encrypts stored
+IMAP passwords) and move `var/maildir` out of the old `maildir` docker volume
+if you had synced mail. Mailbox hosts change meaning too: from the host,
+Proton Bridge is plain `127.0.0.1`, not `host.docker.internal`.
+
 ## Console commands
 
 Run inside the app container (`docker compose exec app php bin/console <command>`):

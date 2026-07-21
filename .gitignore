@@ -5,3 +5,4 @@
 /bin/meilisearch
 /public/bundles/
 /config/reference.php
+/.phpunit.result.cache
