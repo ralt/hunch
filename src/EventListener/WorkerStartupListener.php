@@ -4,6 +4,7 @@ namespace App\EventListener;
 
 use App\Message\SyncMailboxMessage;
 use App\Repository\MailboxRepository;
+use App\Service\SyncService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -40,7 +41,18 @@ final class WorkerStartupListener
             return;
         }
 
+        $conn = $this->em->getConnection();
         foreach ($this->mailboxes->findBy(['syncStatus' => 'syncing']) as $mb) {
+            // With several sync workers, "syncing" may be a LIVE sync owned by
+            // another worker, not a stale leftover. The advisory lock tells
+            // them apart: held → a live sync owns it, leave it alone; free →
+            // nobody is syncing, so it really was interrupted.
+            $key = SyncService::lockKey($mb);
+            if (!$conn->fetchOne('SELECT pg_try_advisory_lock(hashtext(?))', [$key])) {
+                continue;
+            }
+            $conn->executeStatement('SELECT pg_advisory_unlock(hashtext(?))', [$key]);
+
             $mb->setSyncStatus('error')
                 ->setLastError('Sync was interrupted before it finished (worker restarted); retrying automatically.');
             $this->em->flush();

@@ -37,19 +37,45 @@ final class SyncService
      */
     public function syncMailbox(Mailbox $mb, callable $progress): int
     {
-        $mb->setSyncStatus('syncing')->setLastError(null);
-        $this->em->flush();
-        try {
-            $total = $this->doSync($mb, $progress);
-            $mb->setSyncStatus('ok')->setLastSyncedAt(new \DateTimeImmutable())->setLastError(null);
-            $this->em->flush();
+        // Per-mailbox lock: with more than one sync worker (or a worker plus
+        // `hunch:sync` from a cron), two queued syncs for the same mailbox —
+        // say a manual "Sync now" next to a pending retry — must not run
+        // concurrently: they would re-fetch each other's pages and fight over
+        // syncStatus. A Postgres advisory lock is session-scoped, so a
+        // crashed worker's lock dies with its connection — nothing to clean
+        // up. When it's held, an identical sync is already running; skip
+        // instead of waiting.
+        $conn = $this->em->getConnection();
+        $key = self::lockKey($mb);
+        if (!$conn->fetchOne('SELECT pg_try_advisory_lock(hashtext(?))', [$key])) {
+            $progress('another sync of this mailbox is already running — skipping');
 
-            return $total;
-        } catch (\Throwable $e) {
-            $mb->setSyncStatus('error')->setLastError(RootCause::message($e));
-            $this->em->flush();
-            throw $e;
+            return 0;
         }
+
+        try {
+            $mb->setSyncStatus('syncing')->setLastError(null);
+            $this->em->flush();
+            try {
+                $total = $this->doSync($mb, $progress);
+                $mb->setSyncStatus('ok')->setLastSyncedAt(new \DateTimeImmutable())->setLastError(null);
+                $this->em->flush();
+
+                return $total;
+            } catch (\Throwable $e) {
+                $mb->setSyncStatus('error')->setLastError(RootCause::message($e));
+                $this->em->flush();
+                throw $e;
+            }
+        } finally {
+            $conn->executeStatement('SELECT pg_advisory_unlock(hashtext(?))', [$key]);
+        }
+    }
+
+    /** Advisory-lock key guarding a mailbox's sync; also probed by WorkerStartupListener. */
+    public static function lockKey(Mailbox $mb): string
+    {
+        return 'mailbox-sync:'.$mb->getId();
     }
 
     /** @param callable(string):void $progress */
