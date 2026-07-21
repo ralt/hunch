@@ -5,7 +5,19 @@ framework:
             # Two Postgres-backed queues on separate workers so a long-running
             # mailbox sync never blocks interactive searches.
             search: '%env(MESSENGER_TRANSPORT_DSN)%?queue_name=search'
-            sync: '%env(MESSENGER_TRANSPORT_DSN)%?queue_name=sync'
+            sync:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%?queue_name=sync'
+                # IMAP failures are usually transient (server hiccup, Proton
+                # Bridge restarting, laptop waking up before the network). The
+                # default strategy (3 tries within ~7s) is gone before the
+                # network is back, so spread retries over ~half an hour:
+                # 1, 2, 4, 8 and 16 minutes. Persistent failures (bad
+                # password) still land in `failed` for manual review, and the
+                # per-folder UID cursor makes every retry resume, not redo.
+                retry_strategy:
+                    max_retries: 5
+                    delay: 60000
+                    multiplier: 2
             failed: 'doctrine://default?queue_name=failed'
         routing:
             App\Message\SearchMessage: search
