@@ -211,16 +211,22 @@
 
         // --- Assistant messages ---------------------------------------------
         function linkifyRefs(el) {
+            // The prompt asks for #N, but models drift in other languages
+            // (French replies say "n°45") — accept the common spellings so a
+            // reference stays clickable either way. Unknown numbers fall
+            // through as plain text via the candidateIndex lookup below.
+            const refAny = /(?:#|[Nn][°º]\s?|№\s?)\d+/;
+            const refOne = /^(?:#|[Nn][°º]\s?|№\s?)(\d+)$/;
             const nodes = [];
             const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
             while (w.nextNode()) nodes.push(w.currentNode);
             nodes.forEach(node => {
-                if (!/#\d+/.test(node.nodeValue)) return;
-                const parts = node.nodeValue.split(/(#\d+)/);
+                if (!refAny.test(node.nodeValue)) return;
+                const parts = node.nodeValue.split(new RegExp('(' + refAny.source + ')'));
                 const frag = document.createDocumentFragment();
                 let changed = false;
                 parts.forEach(p => {
-                    const m = /^#(\d+)$/.exec(p);
+                    const m = refOne.exec(p);
                     const info = m && candidateIndex[m[1]];
                     if (info) {
                         const a = document.createElement('a');

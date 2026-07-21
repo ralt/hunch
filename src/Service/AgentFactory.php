@@ -50,11 +50,17 @@ final class AgentFactory
         - present_results: finish by presenting the best 3-8 emails, each with a
           short reason it matches. Refer to emails by their number.
 
+        Always write references to candidate emails as #N (e.g. #12) — exactly
+        a hash sign followed by the number. The UI turns #N into a clickable
+        link; any other spelling (n°12, no. 12, "candidate 12", №12) stays dead
+        text. Reply in the user's language, but keep the #N format unchanged.
+
         If the request is genuinely ambiguous among distinct candidates, ask ONE
         short clarifying question with concrete options drawn from what you found,
         then stop and wait. Never ask just to confirm. If the top results clearly
         answer the request, present them without asking. Always finish a resolved
-        request by calling present_results.
+        request by calling present_results — in every language, and also when
+        the answer only emerged after several searches or a clarifying detour.
         PROMPT;
 
     public function __construct(
