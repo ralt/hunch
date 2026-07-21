@@ -6,7 +6,10 @@ doctrine:
             uuid: 'Symfony\Bridge\Doctrine\Types\UuidType'
     orm:
         auto_generate_proxy_classes: true
-        enable_lazy_ghost_objects: true
+        # PHP 8.4 native lazy objects: with an unpinned symfony/var-exporter
+        # resolving to 8.x, the old LazyGhost proxies no longer exist.
+        # Requires PHP >= 8.4 (the Dockerfile base image matches).
+        enable_native_lazy_objects: true
         report_fields_where_declared: true
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
