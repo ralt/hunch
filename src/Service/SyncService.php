@@ -130,9 +130,27 @@ final class SyncService
             $page = max(1, intdiv($oldCount, $perPage)); // 1 page before the new mail
 
             if ($oldCount < \count($allUids)) {
-                do {
-                    $messages = $client->getFolder($folder)->query()->softFail()
-                        ->all()->setFetchOrder('asc')->limit($perPage, $page)->get();
+                $dropped = 0;
+                while (true) {
+                    // A connection that dies mid-fetch (Gmail cuts long IMAP
+                    // sessions) is transparently re-established by webklex's
+                    // checkConnection(), but connect() starts by clearing the
+                    // selected folder — and every Message built afterwards
+                    // assigns that null to its typed string $folder_path: a
+                    // TypeError softFail() doesn't catch. The link is healthy
+                    // again; the folder just needs re-selecting, which the
+                    // getFolder()->query() here does — so retry the page.
+                    try {
+                        $messages = $client->getFolder($folder)->query()->softFail()
+                            ->all()->setFetchOrder('asc')->limit($perPage, $page)->get();
+                    } catch (\TypeError $e) {
+                        if (++$dropped > 3) {
+                            throw $e; // not a blip — surface it and let Messenger retry
+                        }
+                        $progress(\sprintf('%s: connection dropped mid-fetch, retrying page %d', $folder, $page));
+                        continue;
+                    }
+                    $dropped = 0;
                     $count = $messages->count();
 
                     $batch = [];
@@ -158,7 +176,10 @@ final class SyncService
                     unset($messages, $batch);
                     gc_collect_cycles();
                     ++$page;
-                } while ($count === $perPage);
+                    if ($count !== $perPage) {
+                        break;
+                    }
+                }
             }
 
             $progress(\sprintf('%s: done (%d new)', $folder, $folderNew));
