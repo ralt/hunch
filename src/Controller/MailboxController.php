@@ -123,6 +123,32 @@ final class MailboxController extends AbstractController
         return new JsonResponse($result);
     }
 
+    /** Update the IMAP password (e.g. a rotated Gmail app password) without recreating the mailbox. */
+    #[Route('/{id}/password', name: 'mailbox_password', methods: ['POST'])]
+    public function password(string $id, Request $request, MailboxRepository $repo, Crypto $crypto, EntityManagerInterface $em, MessageBusInterface $bus): Response
+    {
+        $mb = $this->ownedOr404($id, $repo, $request);
+
+        $password = (string) $request->request->get('password');
+        if ('' === $password) {
+            $this->addFlash('error', 'Password cannot be empty.');
+
+            return $this->redirectToRoute('mailboxes');
+        }
+
+        $mb->setImapPasswordEnc($crypto->encrypt($password))
+            ->setLastError(null)
+            ->setSyncStatus('syncing');
+        $em->flush();
+
+        // Sync right away: it either confirms the new password works or
+        // surfaces the IMAP error on this page.
+        $bus->dispatch(new SyncMailboxMessage((string) $mb->getId()));
+        $this->addFlash('success', \sprintf('Password updated for %s — sync started to verify it.', $mb->getLabel()));
+
+        return $this->redirectToRoute('mailboxes');
+    }
+
     #[Route('/{id}/delete', name: 'mailbox_delete', methods: ['POST'])]
     public function delete(string $id, Request $request, MailboxRepository $repo, EntityManagerInterface $em): Response
     {

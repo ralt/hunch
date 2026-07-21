@@ -34,6 +34,14 @@
                     <button type="submit" class="ghost">Delete</button>
                 </form>
             </p>
+            <details style="margin-top:.6rem">
+                <summary class="dim" style="cursor:pointer">Update password</summary>
+                <form method="post" action="{{ path('mailbox_password', {id: mb.id}) }}" style="display:flex; gap:.5rem; align-items:center; margin-top:.4rem">
+                    <input type="password" name="password" placeholder="New IMAP password" autocomplete="new-password" required>
+                    <input type="hidden" name="_token" value="{{ csrf_token('mailbox') }}">
+                    <button type="submit">Save &amp; sync</button>
+                </form>
+            </details>
         </div>
     {% else %}
         <p class="dim">No mailboxes yet. Add one below.</p>
