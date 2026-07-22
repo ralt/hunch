@@ -53,4 +53,17 @@ final class MailTextTest extends TestCase
         $text = MailText::fromHtml('<p>ligne 1</p><p>ligne 2</p>');
         $this->assertSame("ligne 1\nligne 2", $text);
     }
+
+    public function testEscapedHtmlDoesNotRematerializeAsMarkup(): void
+    {
+        // Entity decoding turns &lt;div …&gt; into real tags after strip_tags
+        // already ran; a second pass must strip those too.
+        $html = '<p>Bonjour</p>&lt;body style=&quot;font-family:Arial&quot;&gt;&lt;style&gt;* {font-size:12px}&lt;/style&gt;Au revoir&lt;/body&gt;';
+        $text = MailText::fromHtml($html);
+        $this->assertStringNotContainsString('font-family', $text);
+        $this->assertStringNotContainsString('font-size', $text);
+        $this->assertStringNotContainsString('<', $text);
+        $this->assertStringContainsString('Bonjour', $text);
+        $this->assertStringContainsString('Au revoir', $text);
+    }
 }

@@ -23,6 +23,19 @@ final class MailText
 
     public static function fromHtml(string $html): string
     {
+        $text = self::onePass($html);
+        // Some senders embed HTML-escaped HTML (&lt;div …&gt;) in the body;
+        // entity decoding re-materializes it as tags *after* strip_tags ran.
+        // If the output still looks like markup, run it through again.
+        for ($i = 0; $i < 2 && preg_match('~<[a-z!/][^>]*>~i', $text); ++$i) {
+            $text = self::onePass($text);
+        }
+
+        return $text;
+    }
+
+    private static function onePass(string $html): string
+    {
         if ('' === trim($html)) {
             return '';
         }
