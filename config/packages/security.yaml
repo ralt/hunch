@@ -20,6 +20,12 @@ security:
                 check_path: login
                 enable_csrf: true
                 default_target_path: home
+            remember_me:
+                secret: '%env(APP_SECRET)%'
+                lifetime: 2592000 # 30 days
+                # Single-household app with admin-created accounts: no
+                # "remember me" checkbox, everyone gets the long cookie.
+                always_remember_me: true
             logout:
                 path: logout
                 target: login
