@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Entity\Mailbox;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Webklex\PHPIMAP\ClientManager;
 
 /**
@@ -23,7 +22,7 @@ final class SyncService
         private readonly MailIndex $index,
         private readonly Crypto $crypto,
         private readonly EntityManagerInterface $em,
-        #[Autowire('%kernel.project_dir%/var/maildir')] private readonly string $maildir,
+        private readonly Maildir $maildir,
     ) {
     }
 
@@ -108,7 +107,7 @@ final class SyncService
         $perPage = 50;
         foreach ($mb->getFolders() as $folder) {
             $last = $mb->lastUid($folder);
-            $dir = \sprintf('%s/%s/%s/%s', $this->maildir, $userId, $mbId, $this->sanitize($folder));
+            $dir = $this->maildir->folderDir($userId, $mbId, $folder);
             @mkdir($dir, 0o775, true);
 
             // webklex can only fetch by page (its whereUid()/whereUidIn() emit an
@@ -209,10 +208,7 @@ final class SyncService
 
         $ts = ($d = $message->getDate()) ? (strtotime((string) $d) ?: 0) : 0;
 
-        $body = (string) $message->getTextBody();
-        if ('' === $body) {
-            $body = trim(html_entity_decode(strip_tags((string) $message->getHTMLBody())));
-        }
+        $body = MailText::extract($message);
 
         $doc = [
             'id' => sha1($mbId.':'.$folder.':'.$uid),
@@ -295,10 +291,5 @@ final class SyncService
         $decoded = @mb_decode_mimeheader($s);
 
         return false === $decoded || '' === $decoded ? $s : $decoded;
-    }
-
-    private function sanitize(string $folder): string
-    {
-        return str_replace(['/', '\\', ' '], ['.', '.', '_'], $folder);
     }
 }
