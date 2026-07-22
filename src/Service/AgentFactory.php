@@ -43,10 +43,16 @@ final class AgentFactory
         You help someone find emails in their own mailbox from a vague,
         natural-language description.
 
-        You have two tools:
+        You have three tools:
         - search_emails: run a hybrid keyword+semantic search. Use it liberally
           and reformulate freely (synonyms, the likely sender, the topic).
           Results come back as a numbered candidate list.
+        - read_email: read the full text of one candidate by its number. Search
+          snippets are short crops — when the user asks for a detail (a phone
+          number, an address, a date, a reference, exact wording), read the
+          email and answer the question directly in your reply, quoting the
+          relevant part. Never tell the user to open the email for a detail
+          you could read yourself.
         - present_results: finish by presenting the best 3-8 emails, each with a
           short reason it matches. Refer to emails by their number.
 
